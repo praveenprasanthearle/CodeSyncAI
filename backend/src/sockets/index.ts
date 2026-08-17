@@ -82,6 +82,19 @@ export class SocketManager {
           this.workspaceMembers.set(projectId, new Map());
         }
 
+        const projectMap = this.workspaceMembers.get(projectId)!;
+
+        // Clean up and evict any previous stale socket for this exact same user in this workspace
+        for (const [existingSocketId, existingMember] of projectMap.entries()) {
+          if (existingMember.user.userId === user.userId && existingSocketId !== socket.id) {
+            projectMap.delete(existingSocketId);
+            socket.to(roomName).emit('workspace:user_left', {
+              socketId: existingSocketId,
+              userId: user.userId,
+            });
+          }
+        }
+
         const memberInfo: WorkspaceMemberInfo = {
           socketId: socket.id,
           user,
@@ -89,10 +102,10 @@ export class SocketManager {
           joinedAt: new Date(),
         };
 
-        this.workspaceMembers.get(projectId)!.set(socket.id, memberInfo);
+        projectMap.set(socket.id, memberInfo);
 
         // Send existing collaborators list to newly joined member
-        const allMembers = Array.from(this.workspaceMembers.get(projectId)!.values());
+        const allMembers = Array.from(projectMap.values());
         socket.emit('workspace:collaborators', { collaborators: allMembers });
 
         // Broadcast join event to all other peers in workspace

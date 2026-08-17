@@ -17,15 +17,32 @@ interface AuthState {
   updateProfile: (data: { name?: string; avatarUrl?: string }) => Promise<void>;
 }
 
+const getStoredToken = (): string | null => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem('codesync_access_token');
+    }
+  } catch (_e) {
+    // Ignore storage error
+  }
+  return null;
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: localStorage.getItem('codesync_access_token'),
+  token: getStoredToken(),
   isAuthenticated: false,
   isLoading: true,
   error: null,
 
   setAuth: (user, token) => {
-    localStorage.setItem('codesync_access_token', token);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('codesync_access_token', token);
+      }
+    } catch (_e) {
+      // Ignore storage error
+    }
     set({
       user,
       token,
@@ -40,7 +57,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setError: (error) => set({ error }),
 
   clearAuth: () => {
-    localStorage.removeItem('codesync_access_token');
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem('codesync_access_token');
+      }
+    } catch (_e) {
+      // Ignore storage error
+    }
     set({
       user: null,
       token: null,
@@ -52,7 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initAuth: async () => {
     set({ isLoading: true });
-    const storedToken = localStorage.getItem('codesync_access_token');
+    const storedToken = getStoredToken();
 
     try {
       if (storedToken) {

@@ -105,22 +105,33 @@ export const useCollaborationStore = create<CollaborationState>((set, get) => ({
 
     // Workspace Presence Listeners
     socket.on('workspace:collaborators', ({ collaborators }: { collaborators: WorkspaceMemberInfo[] }) => {
-      set({ collaborators });
+      // Deduplicate by userId to ensure single count per user
+      const map = new Map<string, WorkspaceMemberInfo>();
+      for (const member of collaborators) {
+        map.set(member.user.userId, member);
+      }
+      set({ collaborators: Array.from(map.values()) });
     });
 
     socket.on('workspace:user_joined', ({ member }: { member: WorkspaceMemberInfo }) => {
       set((state) => {
-        const exists = state.collaborators.some((c) => c.socketId === member.socketId);
-        if (exists) return state;
-        return { collaborators: [...state.collaborators, member] };
+        // Remove any prior entry for the same user or socket
+        const filtered = state.collaborators.filter(
+          (c) => c.user.userId !== member.user.userId && c.socketId !== member.socketId
+        );
+        return { collaborators: [...filtered, member] };
       });
     });
 
-    socket.on('workspace:user_left', ({ socketId }: { socketId: string }) => {
+    socket.on('workspace:user_left', ({ socketId, userId }: { socketId: string; userId?: string }) => {
       set((state) => ({
-        collaborators: state.collaborators.filter((c) => c.socketId !== socketId),
+        collaborators: state.collaborators.filter(
+          (c) => c.socketId !== socketId && (!userId || c.user.userId !== userId)
+        ),
         peerCursors: Object.fromEntries(
-          Object.entries(state.peerCursors).filter(([key]) => key !== socketId)
+          Object.entries(state.peerCursors).filter(
+            ([key, val]) => key !== socketId && (!userId || val.user.userId !== userId)
+          )
         ),
       }));
     });

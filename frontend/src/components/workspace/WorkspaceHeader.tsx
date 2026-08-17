@@ -119,10 +119,11 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
       {/* Right Action Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Live Collaborators Presence Stack */}
-        <div className="hidden lg:flex items-center mr-1">
+        <div className="flex items-center mr-1">
           <CollaboratorPresenceBar
             collaborators={collaborators}
             activeFileId={activeFileId}
+            onOpenInviteModal={onOpenInviteModal}
           />
         </div>
 

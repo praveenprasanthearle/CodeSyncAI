@@ -17,6 +17,8 @@ import {
   Loader2,
   Trash2,
   Boxes,
+  Key,
+  Play,
 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useFileStore } from '../stores/fileStore';
@@ -36,6 +38,7 @@ import { ExtensionRequiredModal } from '../components/workspace/ExtensionRequire
 import { ProjectMembersModal } from '../components/dashboard/ProjectMembersModal';
 import { SnapshotModal } from '../components/workspace/SnapshotModal';
 import { VersionHistoryDrawer } from '../components/workspace/VersionHistoryDrawer';
+import { GeminiApiKeyModal } from '../components/workspace/GeminiApiKeyModal';
 import { updateRemoteCursorDecorations } from '../utils/monacoDecorations';
 import { IFileNode, IExtension } from '../types';
 
@@ -69,6 +72,7 @@ export const WorkspacePage: React.FC = () => {
   const {
     messages: aiMessages,
     isLoading: isAiLoading,
+    geminiApiKey,
     sendMessage: sendAiMessage,
     explainCode,
     refactorCode,
@@ -87,6 +91,7 @@ export const WorkspacePage: React.FC = () => {
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [isSnapshotModalOpen, setIsSnapshotModalOpen] = useState(false);
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
   const [activeSideTab, setActiveSideTab] = useState<'ai' | 'chat' | 'extensions'>('ai');
   const [requiredExtensionModal, setRequiredExtensionModal] = useState<{
@@ -321,7 +326,16 @@ export const WorkspacePage: React.FC = () => {
       }
     }
 
-    await sendAiMessage(userText, activeFile, selectedText || undefined);
+    const currentFilePayload = activeFile
+      ? {
+          name: activeFile.name,
+          path: activeFile.path,
+          language: activeFile.language || activeLanguage,
+          content: activeContent,
+        }
+      : null;
+
+    await sendAiMessage(userText, currentFilePayload as any, selectedText || undefined);
   };
 
   const handleApplyCodeToEditor = (snippet: string, msgId: string) => {
@@ -513,7 +527,30 @@ export const WorkspacePage: React.FC = () => {
 
             {/* AI Assistant View */}
             {activeSideTab === 'ai' && (
-              <div className="flex-1 flex flex-col p-3 space-y-3 overflow-hidden">
+              <div className="flex-1 flex flex-col p-3 space-y-2.5 overflow-hidden">
+                {/* Engine Status & API Key Controls */}
+                <div className="flex items-center justify-between px-1 py-1 rounded-lg bg-surface-400 border border-surface-50 text-[11px] font-mono shrink-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span
+                      className={`h-2 w-2 rounded-full shrink-0 ${
+                        geminiApiKey ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
+                      }`}
+                    />
+                    <span className="text-slate-300 font-semibold truncate text-[10px]">
+                      {geminiApiKey ? 'Gemini 2.0 Flash (Live)' : 'Smart Engine (Offline)'}
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => setIsApiKeyModalOpen(true)}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-200 hover:bg-surface-100 border border-surface-50 text-[10px] text-purple-300 hover:text-purple-200 transition-all shrink-0"
+                    title="Configure Google Gemini API Key"
+                  >
+                    <Key className="h-3 w-3 text-gold-400" />
+                    <span>{geminiApiKey ? 'API Key' : '🔑 Add Key'}</span>
+                  </button>
+                </div>
+
                 {/* AI Quick Action Chips */}
                 <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono shrink-0">
                   <button
@@ -574,7 +611,8 @@ export const WorkspacePage: React.FC = () => {
                         <span className="font-bold flex items-center gap-1">
                           {msg.sender === 'ai' ? (
                             <>
-                              <Bot className="h-3.5 w-3.5 text-purple-400" /> Gemini AI
+                              <Bot className="h-3.5 w-3.5 text-purple-400" />{' '}
+                              <span>{msg.model?.includes('gemini') ? 'Gemini 2.0' : 'CodeSync AI'}</span>
                             </>
                           ) : (
                             '👤 You'
@@ -587,7 +625,7 @@ export const WorkspacePage: React.FC = () => {
                         {msg.text}
                       </div>
 
-                      {/* Code Snippet Block with Apply & Copy Actions */}
+                      {/* Code Snippet Block with Apply, Run & Copy Actions */}
                       {msg.codeSnippet && (
                         <div className="mt-2 rounded-lg border border-surface-50 bg-surface-400 p-2.5 space-y-2 font-mono text-[11px]">
                           <div className="flex items-center justify-between border-b border-surface-50/60 pb-1.5 text-slate-400">
@@ -605,6 +643,15 @@ export const WorkspacePage: React.FC = () => {
                                   <Copy className="h-3 w-3" />
                                 )}
                                 <span>{copiedSnippetId === msg.id ? 'Copied' : 'Copy'}</span>
+                              </button>
+
+                              <button
+                                onClick={() => runCode(msg.language || activeLanguage, msg.codeSnippet!)}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold transition-all"
+                                title="Run this snippet in sandbox"
+                              >
+                                <Play className="h-3 w-3 fill-emerald-300" />
+                                <span>Run</span>
                               </button>
 
                               {activeFileId && (
@@ -751,6 +798,12 @@ export const WorkspacePage: React.FC = () => {
           onSuccess={() => setIsHistoryDrawerOpen(true)}
         />
       )}
+
+      {/* Gemini API Key Configuration Modal */}
+      <GeminiApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+      />
     </div>
   );
 };

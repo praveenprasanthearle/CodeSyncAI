@@ -23,8 +23,6 @@ describe('Frontend State Stores & Utilities', () => {
       type: 'file',
       language: 'typescript',
       content: 'console.log("hello");',
-      size: 21,
-      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
@@ -36,8 +34,6 @@ describe('Frontend State Stores & Utilities', () => {
       type: 'file',
       language: 'css',
       content: 'body { margin: 0; }',
-      size: 19,
-      createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
