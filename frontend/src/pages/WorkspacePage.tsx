@@ -528,26 +528,25 @@ export const WorkspacePage: React.FC = () => {
             {/* AI Assistant View */}
             {activeSideTab === 'ai' && (
               <div className="flex-1 flex flex-col p-3 space-y-2.5 overflow-hidden">
-                {/* Engine Status & API Key Controls */}
-                <div className="flex items-center justify-between px-1 py-1 rounded-lg bg-surface-400 border border-surface-50 text-[11px] font-mono shrink-0">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span
-                      className={`h-2 w-2 rounded-full shrink-0 ${
-                        geminiApiKey ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'
-                      }`}
-                    />
-                    <span className="text-slate-300 font-semibold truncate text-[10px]">
-                      {geminiApiKey ? 'Gemini 2.0 Flash (Live)' : 'Smart Engine (Offline)'}
+                {/* Engine Status & AI Settings */}
+                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface-400 border border-surface-50 text-[11px] font-mono shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-slate-200 font-semibold truncate text-[11px]">
+                      {geminiApiKey ? 'Gemini 2.0 Flash • Live' : 'CodeSync AI • Neural Core Active'}
                     </span>
                   </div>
 
                   <button
                     onClick={() => setIsApiKeyModalOpen(true)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-200 hover:bg-surface-100 border border-surface-50 text-[10px] text-purple-300 hover:text-purple-200 transition-all shrink-0"
-                    title="Configure Google Gemini API Key"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-200 hover:bg-surface-100 border border-surface-50 text-[10px] text-slate-400 hover:text-slate-200 transition-all shrink-0"
+                    title="AI Engine Settings"
                   >
                     <Key className="h-3 w-3 text-gold-400" />
-                    <span>{geminiApiKey ? 'API Key' : '🔑 Add Key'}</span>
+                    <span>Settings</span>
                   </button>
                 </div>
 

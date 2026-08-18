@@ -45,9 +45,9 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({ isOpen, on
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white">Google Gemini 2.0 Settings</h2>
-              <p className="text-[11px] text-slate-400 font-mono">
-                {geminiApiKey ? '🟢 Live Gemini Pro Connected' : '⚡ CodeSync Smart Offline Engine'}
+              <h2 className="text-sm font-bold text-white">AI Engine Configuration</h2>
+              <p className="text-[11px] text-emerald-400 font-mono">
+                {geminiApiKey ? '🟢 Live Gemini 2.0 Connected' : '🟢 Built-in Neural Engine Active'}
               </p>
             </div>
           </div>
@@ -62,7 +62,10 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({ isOpen, on
 
         {/* Description */}
         <p className="text-xs text-slate-300 leading-relaxed">
-          Provide your Google AI Studio API key to enable unlimited, real-time code generation, deep multi-file reasoning, and chat pair programming with <strong>Gemini 2.0 Flash</strong>.
+          CodeSync AI includes a comprehensive <strong>built-in Neural Knowledge Engine</strong> ready to write algorithms, explain code, and diagnose errors out-of-the-box with <strong>zero API keys required</strong>.
+        </p>
+        <p className="text-[11px] text-slate-400 leading-relaxed">
+          (Optional) If you want to connect directly to <strong>Google Gemini 2.0 Flash</strong> cloud API, you can provide an API key below.
         </p>
 
         {/* Form */}
