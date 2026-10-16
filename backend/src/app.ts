@@ -3,6 +3,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { env } from './config/env';
+import { corsOptions } from './config/cors';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler } from './middleware/errorHandler';
 import apiRoutes from './routes';
@@ -19,17 +20,7 @@ export const createApp = (): Application => {
   );
 
   // Cross-Origin Resource Sharing
-  app.use(
-    cors({
-      origin: (requestOrigin, callback) => {
-        // Allow local dev network IP connections (e.g. Wi-Fi testing)
-        callback(null, requestOrigin || true);
-      },
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-    })
-  );
+  app.use(cors(corsOptions));
 
   // Request body parsers
   app.use(express.json({ limit: '10mb' }));

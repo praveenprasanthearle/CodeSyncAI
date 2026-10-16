@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
 import * as Y from 'yjs';
 import { useFileStore } from './fileStore';
+import { getSocketUrl } from '../utils/network';
 
 export interface CollaboratorUser {
   userId: string;
@@ -62,9 +63,6 @@ interface CollaborationState {
   clearState: () => void;
 }
 
-const getSocketUrl = (): string => {
-  return import.meta.env.VITE_WS_URL || window.location.origin;
-};
 
 export const useCollaborationStore = create<CollaborationState>((set, get) => ({
   socket: null,

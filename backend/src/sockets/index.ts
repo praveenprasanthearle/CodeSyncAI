@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { socketAuthMiddleware, AuthenticatedSocket, CollaboratorUser } from './socketAuth';
 import { YjsDocManager } from './yjsManager';
 import { ChatService } from '../services/chat.service';
+import { isOriginAllowed } from '../config/cors';
 
 export interface WorkspaceMemberInfo {
   socketId: string;
@@ -32,7 +33,11 @@ export class SocketManager {
     this.io = new Server(httpServer, {
       cors: {
         origin: (requestOrigin, callback) => {
-          callback(null, requestOrigin || true);
+          if (isOriginAllowed(requestOrigin)) {
+            callback(null, true);
+          } else {
+            callback(null, false);
+          }
         },
         methods: ['GET', 'POST'],
         credentials: true,

@@ -8,6 +8,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.string().transform((val) => parseInt(val, 10)).default('5000'),
+  HOST: z.string().default('0.0.0.0'),
   CLIENT_URL: z.string().url().default('http://localhost:5173'),
   DATABASE_URL: z.string().default('mongodb://127.0.0.1:27017/codesync_ai'),
   JWT_ACCESS_SECRET: z.string().min(16, 'JWT_ACCESS_SECRET must be at least 16 chars'),

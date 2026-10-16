@@ -11,17 +11,21 @@ export default defineConfig({
     },
   },
   server: {
-    host: true, // Exposes server to local network (0.0.0.0) so friends on same Wi-Fi/LAN can connect
+    host: true, // Exposes server to all network interfaces (0.0.0.0) for LAN access
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:5000',
+        target: process.env.BACKEND_URL || 'http://127.0.0.1:5000',
         changeOrigin: true,
       },
       '/socket.io': {
-        target: 'http://localhost:5000',
+        target: process.env.BACKEND_URL || 'http://127.0.0.1:5000',
         ws: true,
       },
     },
+  },
+  preview: {
+    host: true,
+    port: 5173,
   },
 });

@@ -14,11 +14,11 @@ const startServer = async (): Promise<void> => {
   // Initialize Socket.IO
   SocketManager.initialize(httpServer);
 
-  httpServer.listen(env.PORT, () => {
-    console.log(`🚀 CodeSync AI Backend running on port ${env.PORT} in [${env.NODE_ENV}] mode`);
-    console.log(`📡 Socket.IO gateway ready at http://localhost:${env.PORT}`);
-    console.log(`🔗 API Base: http://localhost:${env.PORT}/api/v1`);
-    console.log(`🩺 Health check: http://localhost:${env.PORT}/api/v1/health`);
+  httpServer.listen(env.PORT, env.HOST, () => {
+    console.log(`🚀 CodeSync AI Backend running on ${env.HOST}:${env.PORT} in [${env.NODE_ENV}] mode`);
+    console.log(`📡 Socket.IO gateway ready at http://${env.HOST === '0.0.0.0' ? 'localhost' : env.HOST}:${env.PORT}`);
+    console.log(`🔗 API Base: http://${env.HOST === '0.0.0.0' ? 'localhost' : env.HOST}:${env.PORT}/api/v1`);
+    console.log(`🩺 Health check: http://${env.HOST === '0.0.0.0' ? 'localhost' : env.HOST}:${env.PORT}/api/v1/health`);
   });
 
   // Graceful Shutdown Handling

@@ -52,6 +52,12 @@ export const useVoiceStore = create<VoiceState>((set, get) => ({
 
     try {
       // 1. Capture local microphone audio stream
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        throw new Error(
+          'Microphone access requires a secure context (HTTPS/localhost) or enabling chrome://flags/#unsafely-treat-insecure-origin-as-secure for remote LAN HTTP testing.'
+        );
+      }
+
       localStream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
