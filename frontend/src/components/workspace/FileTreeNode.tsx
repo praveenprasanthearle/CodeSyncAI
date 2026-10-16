@@ -30,9 +30,9 @@ interface FileTreeNodeProps {
 export const getFileIcon = (name: string, type: 'file' | 'folder', isExpanded = false) => {
   if (type === 'folder') {
     return isExpanded ? (
-      <FolderOpen className="h-4 w-4 text-gold-400 shrink-0" />
+      <FolderOpen className="h-4 w-4 text-amber-500 shrink-0" />
     ) : (
-      <Folder className="h-4 w-4 text-gold-400/80 shrink-0" />
+      <Folder className="h-4 w-4 text-amber-500/90 shrink-0" />
     );
   }
 
@@ -40,29 +40,29 @@ export const getFileIcon = (name: string, type: 'file' | 'folder', isExpanded = 
   switch (ext) {
     case 'jsx':
     case 'tsx':
-      return <Atom className="h-4 w-4 text-sky-400 shrink-0" />;
+      return <Atom className="h-4 w-4 text-sky-600 shrink-0" />;
     case 'js':
     case 'ts':
     case 'mjs':
-      return <Server className="h-4 w-4 text-yellow-400 shrink-0" />;
+      return <Server className="h-4 w-4 text-emerald-600 shrink-0" />;
     case 'py':
-      return <Terminal className="h-4 w-4 text-emerald-400 shrink-0" />;
+      return <Terminal className="h-4 w-4 text-amber-600 shrink-0" />;
     case 'cpp':
     case 'c':
     case 'h':
     case 'hpp':
-      return <Cpu className="h-4 w-4 text-blue-400 shrink-0" />;
+      return <Cpu className="h-4 w-4 text-blue-600 shrink-0" />;
     case 'go':
-      return <Zap className="h-4 w-4 text-cyan-400 shrink-0" />;
+      return <Zap className="h-4 w-4 text-cyan-600 shrink-0" />;
     case 'html':
-      return <FileCode className="h-4 w-4 text-orange-400 shrink-0" />;
+      return <FileCode className="h-4 w-4 text-orange-500 shrink-0" />;
     case 'css':
     case 'scss':
-      return <FileCode className="h-4 w-4 text-pink-400 shrink-0" />;
+      return <FileCode className="h-4 w-4 text-pink-500 shrink-0" />;
     case 'json':
-      return <FileText className="h-4 w-4 text-amber-300 shrink-0" />;
+      return <FileText className="h-4 w-4 text-amber-600 shrink-0" />;
     case 'md':
-      return <FileText className="h-4 w-4 text-purple-400 shrink-0" />;
+      return <FileText className="h-4 w-4 text-purple-600 shrink-0" />;
     default:
       return <FileCode className="h-4 w-4 text-slate-400 shrink-0" />;
   }
@@ -147,16 +147,16 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       <div
         onClick={handleClick}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
-        className={`group relative flex items-center justify-between py-1 pr-2 rounded text-xs font-mono select-none cursor-pointer transition-colors ${
+        className={`group relative flex items-center justify-between py-1 pr-2 rounded-md text-xs font-mono select-none cursor-pointer transition-colors ${
           isActive
-            ? 'bg-gold-400/10 text-gold-300 border-l-2 border-gold-400 font-semibold'
-            : 'text-slate-400 hover:text-slate-200 hover:bg-surface-200/50'
+            ? 'bg-blue-50 text-blue-700 border-l-2 border-blue-600 font-semibold'
+            : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/50'
         }`}
       >
         {/* Node Icon & Label */}
         <div className="flex items-center gap-1.5 min-w-0 flex-1">
           {node.type === 'folder' && (
-            <span className="text-slate-500 hover:text-slate-300">
+            <span className="text-slate-400 hover:text-slate-600">
               {isExpanded ? (
                 <ChevronDown className="h-3.5 w-3.5" />
               ) : (
@@ -175,18 +175,18 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onBlur={() => setIsEditing(false)}
-                className="w-full rounded border border-gold-400 bg-surface-300 px-1 py-0.5 text-xs text-white focus:outline-none"
+                className="w-full rounded border border-blue-600 bg-white px-1 py-0.5 text-xs text-slate-900 focus:outline-none"
               />
             </form>
           ) : (
             <span className="truncate">{node.name}</span>
           )}
 
-          {/* Dirty Dot Indicator */}
-          {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-gold-400 shrink-0 ml-1" title="Unsaved changes" />}
+          {/* Dirty Indicator */}
+          {isDirty && <span className="h-1.5 w-1.5 rounded-full bg-blue-600 shrink-0 ml-1" title="Unsaved changes" />}
         </div>
 
-        {/* Hover Action Controls */}
+        {/* Hover Actions */}
         <div
           className="relative opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity"
           onClick={(e) => e.stopPropagation()}
@@ -196,15 +196,15 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
             <>
               <button
                 onClick={() => onOpenCreateModal(node.id, 'file')}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-surface-100"
-                title="New File in this folder"
+                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+                title="New File"
               >
                 <Plus className="h-3 w-3" />
               </button>
               <button
                 onClick={() => onOpenCreateModal(node.id, 'folder')}
-                className="p-1 rounded text-slate-400 hover:text-white hover:bg-surface-100"
-                title="New Subfolder"
+                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+                title="New Folder"
               >
                 <FolderPlus className="h-3 w-3" />
               </button>
@@ -213,7 +213,7 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
 
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-1 rounded text-slate-400 hover:text-white hover:bg-surface-100"
+            className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
             title="More actions"
           >
             <MoreVertical className="h-3 w-3" />
@@ -221,28 +221,28 @@ export const FileTreeNode: React.FC<FileTreeNodeProps> = ({
 
           {/* Context Menu Dropdown */}
           {isMenuOpen && (
-            <div className="absolute right-0 top-6 w-36 rounded-lg border border-surface-50 bg-surface-200/95 backdrop-blur-xl shadow-2xl py-1 z-40 text-xs animate-in fade-in duration-100">
+            <div className="absolute right-0 top-6 w-36 rounded-lg border border-slate-200 bg-white/95 backdrop-blur-xl shadow-glass-dropdown py-1 z-40 text-xs animate-in fade-in duration-100">
               <button
                 onClick={() => {
                   setIsMenuOpen(false);
                   setIsEditing(true);
                 }}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-300 hover:bg-surface-100 hover:text-white"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
               >
-                <Edit2 className="h-3 w-3 text-gold-400" />
+                <Edit2 className="h-3 w-3 text-slate-500" />
                 <span>Rename</span>
               </button>
               <button
                 onClick={handleCopyPath}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-300 hover:bg-surface-100 hover:text-white"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
               >
-                <Copy className="h-3 w-3 text-sky-400" />
+                <Copy className="h-3 w-3 text-slate-500" />
                 <span>Copy Path</span>
               </button>
-              <div className="border-t border-surface-50/60 my-0.5" />
+              <div className="border-t border-slate-100 my-0.5" />
               <button
                 onClick={handleDelete}
-                className="w-full flex items-center gap-2 px-3 py-1.5 text-rose-400 hover:bg-rose-950/30 hover:text-rose-300"
+                className="w-full flex items-center gap-2 px-3 py-1.5 text-rose-600 hover:bg-rose-50"
               >
                 <Trash2 className="h-3 w-3" />
                 <span>Delete</span>

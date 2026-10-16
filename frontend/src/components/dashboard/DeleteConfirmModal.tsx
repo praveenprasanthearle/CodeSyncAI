@@ -36,45 +36,45 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md glass-card rounded-2xl border border-rose-500/30 p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-md glass-card rounded-2xl border border-rose-200 p-6 sm:p-7 shadow-glass-dropdown animate-in zoom-in-95 duration-150">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-lg p-1.5 text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
         {/* Title */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400">
-            <AlertTriangle className="h-5 w-5" />
+        <div className="flex items-center gap-2.5 mb-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 border border-rose-200 text-rose-600">
+            <AlertTriangle className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white tracking-tight">Delete Workspace</h3>
-            <p className="text-xs text-rose-300/80">This action cannot be undone</p>
+            <h2 className="text-base font-bold text-slate-900 tracking-tight">Delete project</h2>
+            <p className="text-[11px] text-rose-600">This action is permanent and cannot be undone</p>
           </div>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
+          <div className="mb-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
             {error}
           </div>
         )}
 
-        <p className="text-xs text-slate-300 leading-relaxed mb-4">
-          Are you sure you want to permanently delete{' '}
-          <span className="font-bold text-white font-mono bg-surface-200 px-1.5 py-0.5 rounded border border-surface-50">
+        <p className="text-xs text-slate-600 leading-relaxed mb-3">
+          Are you sure you want to delete{' '}
+          <span className="font-semibold text-slate-900 font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-200">
             {project.name}
           </span>
-          ? All files, collaborative state, and history will be erased.
+          ? All files, history, and collaborative state will be erased.
         </p>
 
-        <form onSubmit={handleDelete} className="space-y-4">
+        <form onSubmit={handleDelete} className="space-y-3">
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">
-              Type <span className="font-semibold text-white font-mono">{project.name}</span> to confirm:
+            <label className="block text-xs text-slate-600 mb-1">
+              Type <span className="font-semibold text-slate-900 font-mono">{project.name}</span> to confirm:
             </label>
             <input
               type="text"
@@ -82,22 +82,22 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
               value={confirmName}
               onChange={(e) => setConfirmName(e.target.value)}
               placeholder={project.name}
-              className="w-full rounded-lg border border-surface-50 bg-surface-300/80 px-3.5 py-2 text-xs text-white placeholder-slate-600 focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-rose-500 focus:outline-none focus:ring-1 focus:ring-rose-500 font-mono"
             />
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-surface-50/60">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-medium text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+              className="px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={!isConfirmed || isActionLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 px-4 py-2 text-xs font-semibold text-white shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 px-3.5 py-1.5 text-xs font-medium text-white shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isActionLoading ? (
                 <>
@@ -107,7 +107,7 @@ export const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
               ) : (
                 <>
                   <Trash2 className="h-3.5 w-3.5" />
-                  <span>Delete Permanently</span>
+                  <span>Delete project</span>
                 </>
               )}
             </button>

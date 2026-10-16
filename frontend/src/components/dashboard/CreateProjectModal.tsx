@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   X,
-  Plus,
   Lock,
   Globe,
   Loader2,
@@ -11,7 +10,6 @@ import {
   Cpu,
   Zap,
   FileCode,
-  Sparkles,
   Check,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
@@ -36,66 +34,66 @@ interface TemplateOption {
 const TEMPLATES: TemplateOption[] = [
   {
     id: 'c',
-    name: 'C Standard (GCC)',
-    category: 'Default Core Compiler',
+    name: 'C (GCC)',
+    category: 'C17 standard',
     icon: Cpu,
-    description: 'Default built-in C17/C11 compiler with stdio, POSIX standards, and Makefile support.',
-    color: 'from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400',
-    badge: 'Default Built-in',
+    description: 'C compiler with stdio, POSIX, and makefile support.',
+    color: 'bg-blue-50 border-blue-200 text-blue-600',
+    badge: 'Core',
   },
   {
     id: 'cpp',
-    name: 'C++ Systems (G++)',
-    category: 'Default Core Compiler',
+    name: 'C++ (G++)',
+    category: 'C++20 standard',
     icon: Cpu,
-    description: 'Default built-in C++20 compiler with full Standard Template Library (STL).',
-    color: 'from-indigo-500/20 to-indigo-600/10 border-indigo-500/30 text-indigo-400',
-    badge: 'Default Built-in',
+    description: 'C++ compiler with full standard template library (STL).',
+    color: 'bg-indigo-50 border-indigo-200 text-indigo-600',
+    badge: 'Core',
   },
   {
     id: 'python',
-    name: 'Python 3',
-    category: 'Scripting & AI',
+    name: 'Python',
+    category: 'Python 3',
     icon: Terminal,
-    description: 'Python 3.11+ environment for algorithms, scripting, and data structures.',
-    color: 'from-yellow-500/20 to-yellow-600/10 border-yellow-500/30 text-yellow-400',
-    badge: 'Extension Pack',
+    description: 'Python environment for algorithms, scripting, and web.',
+    color: 'bg-amber-50 border-amber-200 text-amber-600',
+    badge: 'Extension',
   },
   {
     id: 'nodejs',
-    name: 'Node.js & Express',
-    category: 'Backend Service',
+    name: 'Node.js',
+    category: 'Express backend',
     icon: Server,
-    description: 'REST API boilerplate with Express, CORS, and modular architecture.',
-    color: 'from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400',
-    badge: 'Extension Pack',
+    description: 'Node.js runtime with Express server starter.',
+    color: 'bg-emerald-50 border-emerald-200 text-emerald-600',
+    badge: 'Extension',
   },
   {
     id: 'react',
-    name: 'React + Vite',
-    category: 'Frontend App',
+    name: 'React',
+    category: 'Vite + React 18',
     icon: Atom,
-    description: 'Modern SPA with Vite, React 18, and styling ready out of the box.',
-    color: 'from-sky-500/20 to-sky-600/10 border-sky-500/30 text-sky-400',
-    badge: 'Extension Pack',
+    description: 'Frontend SPA starter with Vite and React.',
+    color: 'bg-sky-50 border-sky-200 text-sky-600',
+    badge: 'Extension',
   },
   {
     id: 'go',
-    name: 'Go Engine',
-    category: 'Microservices',
+    name: 'Go',
+    category: 'Go runtime',
     icon: Zap,
-    description: 'Concurrent Go runtime with go.mod dependency setup and goroutines.',
-    color: 'from-cyan-500/20 to-cyan-600/10 border-cyan-500/30 text-cyan-400',
-    badge: 'Extension Pack',
+    description: 'Go runtime with go.mod dependency setup.',
+    color: 'bg-cyan-50 border-cyan-200 text-cyan-600',
+    badge: 'Extension',
   },
   {
     id: 'blank',
-    name: 'Blank Workspace',
-    category: 'Empty Canvas',
+    name: 'Blank',
+    category: 'Empty workspace',
     icon: FileCode,
-    description: 'Empty project structure to craft custom files from scratch.',
-    color: 'from-slate-500/20 to-slate-600/10 border-slate-500/30 text-slate-300',
-    badge: 'Clean Slate',
+    description: 'Empty project to craft custom files from scratch.',
+    color: 'bg-slate-50 border-slate-200 text-slate-600',
+    badge: 'Blank',
   },
 ];
 
@@ -136,7 +134,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     setError(null);
 
     if (!name.trim()) {
-      setError('Please provide a valid project name.');
+      setError('Please provide a project name.');
       return;
     }
 
@@ -155,40 +153,35 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-2xl max-h-[90vh] overflow-y-auto glass-card rounded-2xl border border-surface-50 p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 custom-scrollbar">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto glass-card rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-glass-dropdown animate-in zoom-in-95 duration-150 custom-scrollbar">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-lg p-1.5 text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
         {/* Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-200 border border-gold-400/30 text-gold-300 shadow-gold-sm">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">Create New Workspace</h3>
-            <p className="text-xs text-slate-400">Initialize a collaborative cloud development project</p>
-          </div>
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">New project</h2>
+          <p className="text-xs text-slate-500">Configure your cloud development environment</p>
         </div>
 
         {error && (
-          <div className="mb-5 rounded-lg border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Template Selection Cards */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Template Selection */}
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 font-semibold mb-2.5">
-              1. Choose Environment Template
+            <label className="block text-xs font-medium text-slate-700 mb-2">
+              Template
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {TEMPLATES.map((t) => {
                 const Icon = t.icon;
                 const isSelected = template === t.id;
@@ -197,29 +190,22 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
                     key={t.id}
                     type="button"
                     onClick={() => setTemplate(t.id)}
-                    className={`relative text-left p-3.5 rounded-xl border transition-all duration-200 flex flex-col justify-between ${
+                    className={`relative text-left p-2.5 rounded-xl border transition-all text-xs flex flex-col justify-between ${
                       isSelected
-                        ? 'border-gold-400 bg-surface-200/90 shadow-gold-sm ring-1 ring-gold-400'
-                        : 'border-surface-50 bg-surface-300/40 hover:border-slate-600 hover:bg-surface-200/50'
+                        ? 'border-blue-600 bg-blue-50/70 ring-1 ring-blue-600 shadow-xs'
+                        : 'border-slate-200 bg-white/70 hover:border-slate-300 hover:bg-slate-50'
                     }`}
                   >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className={`p-2 rounded-lg bg-surface-300/80 border ${t.color}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-white">{t.name}</div>
-                          <div className="text-[10px] font-mono text-slate-400">{t.category}</div>
-                        </div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <div className={`p-1.5 rounded-lg border ${t.color}`}>
+                        <Icon className="h-3.5 w-3.5" />
                       </div>
-                      {isSelected && (
-                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-gold-400 text-background">
-                          <Check className="h-3.5 w-3.5 stroke-[3]" />
-                        </div>
-                      )}
+                      {isSelected && <Check className="h-3.5 w-3.5 text-blue-600 stroke-[3]" />}
                     </div>
-                    <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed">{t.description}</p>
+                    <div>
+                      <div className="font-semibold text-slate-900 truncate">{t.name}</div>
+                      <div className="text-[10px] text-slate-500 truncate">{t.category}</div>
+                    </div>
                   </button>
                 );
               })}
@@ -227,134 +213,117 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
           </div>
 
           {/* Project Details */}
-          <div className="space-y-4">
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 font-semibold">
-              2. Workspace Details
-            </label>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Project name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="my-awesome-app"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
+              maxLength={60}
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs text-slate-300 mb-1 font-medium">Project Name</label>
-              <input
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Distributed-Vector-Sync"
-                className="w-full rounded-lg border border-surface-50 bg-surface-300/80 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
-                maxLength={60}
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Description (optional)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief summary of this project..."
+              rows={2}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 resize-none transition-colors"
+              maxLength={200}
+            />
+          </div>
 
-            <div>
-              <label className="block text-xs text-slate-300 mb-1 font-medium">Description (Optional)</label>
-              <textarea
-                rows={2}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Brief summary of the workspace goals and architecture..."
-                className="w-full rounded-lg border border-surface-50 bg-surface-300/80 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors resize-none"
-                maxLength={300}
-              />
-            </div>
+          {/* Visibility */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Visibility</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setVisibility('private')}
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-colors ${
+                  visibility === 'private'
+                    ? 'border-blue-600 bg-blue-50/70 text-slate-900 font-medium'
+                    : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Lock className="h-3.5 w-3.5 text-slate-500" />
+                <div>
+                  <div className="font-semibold text-slate-900">Private</div>
+                  <div className="text-[10px] text-slate-500">Only invited members</div>
+                </div>
+              </button>
 
-            {/* Visibility Selector */}
-            <div>
-              <label className="block text-xs text-slate-300 mb-2 font-medium">Access & Visibility</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setVisibility('private')}
-                  className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
-                    visibility === 'private'
-                      ? 'border-gold-400 bg-surface-200/90 text-white ring-1 ring-gold-400'
-                      : 'border-surface-50 bg-surface-300/40 text-slate-400 hover:border-slate-600'
-                  }`}
-                >
-                  <Lock className="h-4 w-4 text-gold-400 shrink-0" />
-                  <div>
-                    <div className="text-xs font-semibold text-white">Private</div>
-                    <div className="text-[10px] text-slate-400">Only invited collaborators</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setVisibility('public')}
-                  className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
-                    visibility === 'public'
-                      ? 'border-gold-400 bg-surface-200/90 text-white ring-1 ring-gold-400'
-                      : 'border-surface-50 bg-surface-300/40 text-slate-400 hover:border-slate-600'
-                  }`}
-                >
-                  <Globe className="h-4 w-4 text-sky-400 shrink-0" />
-                  <div>
-                    <div className="text-xs font-semibold text-white">Public</div>
-                    <div className="text-[10px] text-slate-400">Anyone with link can view</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* Tags Input */}
-            <div>
-              <label className="block text-xs text-slate-300 mb-1 font-medium">
-                Tags (Up to 5)
-              </label>
-              <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-surface-50 bg-surface-300/80 min-h-[42px]">
-                {tags.map((tag) => (
-                  <span
-                    key={tag}
-                    className="inline-flex items-center gap-1 rounded bg-gold-400/10 px-2 py-0.5 text-xs font-mono font-medium text-gold-300 border border-gold-400/20"
-                  >
-                    #{tag}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveTag(tag)}
-                      className="hover:text-gold-100 font-bold"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {tags.length < 5 && (
-                  <input
-                    type="text"
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={handleAddTag}
-                    placeholder={tags.length === 0 ? "Type tag & press Enter" : "Add tag..."}
-                    className="flex-1 min-w-[120px] bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
-                  />
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => setVisibility('public')}
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-colors ${
+                  visibility === 'public'
+                    ? 'border-blue-600 bg-blue-50/70 text-slate-900 font-medium'
+                    : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <Globe className="h-3.5 w-3.5 text-sky-500" />
+                <div>
+                  <div className="font-semibold text-slate-900">Public</div>
+                  <div className="text-[10px] text-slate-500">Accessible by link</div>
+                </div>
+              </button>
             </div>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-50/60">
+          {/* Tags */}
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Tags (press Enter)</label>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {tags.map((tag) => (
+                <span
+                  key={tag}
+                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono text-slate-700 border border-slate-200"
+                >
+                  #{tag}
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTag(tag)}
+                    className="text-slate-400 hover:text-slate-700"
+                  >
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+            {tags.length < 5 && (
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleAddTag}
+                placeholder="Add tag..."
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none font-mono"
+              />
+            )}
+          </div>
+
+          {/* Buttons */}
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-medium text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+              className="px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isActionLoading}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-500 to-gold-400 px-5 py-2 text-xs font-semibold text-background shadow-md hover:shadow-gold-glow hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-slate-800 transition-all disabled:opacity-50"
             >
-              {isActionLoading ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Provisioning Workspace...</span>
-                </>
-              ) : (
-                <>
-                  <Plus className="h-3.5 w-3.5" />
-                  <span>Create Workspace</span>
-                </>
-              )}
+              {isActionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Create project</span>
             </button>
           </div>
         </form>

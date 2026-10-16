@@ -27,7 +27,7 @@ export const RegisterPage: React.FC = () => {
     setError(null);
 
     if (!isPasswordValid) {
-      setError('Please ensure your password satisfies all strength requirements.');
+      setError('Password must be at least 8 characters and include letters & numbers.');
       return;
     }
 
@@ -55,59 +55,56 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 relative">
-      {/* Background Ambient Glow */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 radial-gold-glow pointer-events-none -z-10" />
-
-      <div className="w-full max-w-md glass-card rounded-2xl p-8 sm:p-10 border border-surface-50 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+    <div className="min-h-[calc(100vh-7rem)] flex items-center justify-center px-4 py-12 light-ambient-bg">
+      <div className="w-full max-w-sm glass-card rounded-2xl p-7 sm:p-8 border border-slate-200/90 shadow-glass">
         {/* Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-surface-200 border border-gold-400/40 shadow-gold-sm mb-4">
-            <Code2 className="h-6 w-6 text-gold-300" />
+        <div className="text-center mb-6">
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-white shadow-sm mb-3">
+            <Code2 className="h-5 w-5" />
           </div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">Create Developer Account</h2>
-          <p className="text-sm text-slate-400 mt-1">Start collaborating on code in real time</p>
+          <h1 className="text-xl font-bold tracking-tight text-slate-900">Create an account</h1>
+          <p className="text-xs text-slate-500 mt-0.5">Start collaborating in real-time</p>
         </div>
 
         {/* Error Alert */}
         {error && (
-          <div className="mb-6 flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-950/40 p-3.5 text-xs text-rose-200">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400 mt-0.5" />
+          <div className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
             <div className="flex-1">{error}</div>
             <button
               onClick={() => setError(null)}
-              className="text-rose-400 hover:text-rose-200 text-xs font-mono font-bold"
+              className="text-rose-500 hover:text-rose-700 font-bold"
             >
               ✕
             </button>
           </div>
         )}
 
-        {/* Registration Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5 font-medium">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               Full Name
             </label>
             <div className="relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Sarah Connor"
-                className="w-full rounded-lg border border-surface-50 bg-surface-300/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
+                className="w-full rounded-lg border border-slate-200 bg-white/90 pl-9 pr-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5 font-medium">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               Username
             </label>
             <div className="relative">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-500">@</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-mono text-slate-400">@</span>
               <input
                 type="text"
                 required
@@ -115,61 +112,61 @@ export const RegisterPage: React.FC = () => {
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
                 placeholder="sarah_dev"
                 maxLength={30}
-                className="w-full rounded-lg border border-surface-50 bg-surface-300/80 pl-9 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors font-mono"
+                className="w-full rounded-lg border border-slate-200 bg-white/90 pl-8 pr-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5 font-medium">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               Email Address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type="email"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="sarah@example.com"
-                className="w-full rounded-lg border border-surface-50 bg-surface-300/80 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
+                className="w-full rounded-lg border border-slate-200 bg-white/90 pl-9 pr-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 mb-1.5 font-medium">
+            <label className="block text-xs font-medium text-slate-700 mb-1">
               Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••••••"
-                className="w-full rounded-lg border border-surface-50 bg-surface-300/80 pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
+                className="w-full rounded-lg border border-slate-200 bg-white/90 pl-9 pr-9 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                 tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
 
-            {/* Password Requirements Checklist */}
+            {/* Checklist */}
             {password.length > 0 && (
-              <div className="mt-2.5 grid grid-cols-2 gap-2 text-[11px] font-mono">
-                <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-400' : 'text-slate-500'}`}>
-                  {hasMinLength ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+              <div className="mt-2 flex items-center gap-4 text-[11px]">
+                <div className={`flex items-center gap-1 ${hasMinLength ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {hasMinLength ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                   <span>8+ characters</span>
                 </div>
-                <div className={`flex items-center gap-1.5 ${hasLetter && hasNumber ? 'text-emerald-400' : 'text-slate-500'}`}>
-                  {hasLetter && hasNumber ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+                <div className={`flex items-center gap-1 ${hasLetter && hasNumber ? 'text-emerald-600' : 'text-slate-400'}`}>
+                  {hasLetter && hasNumber ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
                   <span>Letters & numbers</span>
                 </div>
               </div>
@@ -179,16 +176,16 @@ export const RegisterPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-6 inline-flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-gold-500 to-gold-400 px-4 py-2.5 text-sm font-semibold text-background shadow-md hover:shadow-gold-glow hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+            className="w-full mt-3 inline-flex items-center justify-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-slate-800 transition-all disabled:opacity-50"
           >
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Creating Account...</span>
+                <span>Creating account...</span>
               </>
             ) : (
               <>
-                <span>Create Free Account</span>
+                <span>Create account</span>
                 <ArrowRight className="h-4 w-4" />
               </>
             )}
@@ -196,9 +193,9 @@ export const RegisterPage: React.FC = () => {
         </form>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-xs text-slate-400 border-t border-surface-50/60 pt-6">
+        <div className="mt-5 text-center text-xs text-slate-500 border-t border-slate-100 pt-4">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-gold-300 hover:text-gold-200 underline">
+          <Link to="/login" className="font-semibold text-slate-900 hover:underline">
             Sign in
           </Link>
         </div>

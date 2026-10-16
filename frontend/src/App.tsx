@@ -17,13 +17,13 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-background">
-        <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-200 border border-gold-400/30 shadow-gold-sm animate-pulse">
-          <Code2 className="h-7 w-7 text-gold-300" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 bg-slate-50">
+        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white border border-slate-200/80 shadow-glass">
+          <Code2 className="h-6 w-6 text-blue-600" />
         </div>
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-400">
-          <Loader2 className="h-4 w-4 animate-spin text-gold-400" />
-          <span>Verifying developer session...</span>
+        <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+          <span>Loading session...</span>
         </div>
       </div>
     );
@@ -58,14 +58,14 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   if (isWorkspace) {
     return (
-      <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-editor-bg text-slate-100 font-sans">
+      <div className="fixed inset-0 h-screen w-screen overflow-hidden bg-white text-slate-900 font-sans">
         {children}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background text-slate-100 font-sans selection:bg-gold-400/20 selection:text-gold-200">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans selection:bg-blue-500/10 selection:text-blue-700">
       <Navbar />
       <main className="flex-1">{children}</main>
       <Footer />

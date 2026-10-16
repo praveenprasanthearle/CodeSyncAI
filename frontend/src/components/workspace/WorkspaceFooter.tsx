@@ -24,27 +24,27 @@ export const WorkspaceFooter: React.FC<WorkspaceFooterProps> = ({
   const isExtInstalled = matchingExt ? isExtensionInstalled(matchingExt.id) : false;
 
   return (
-    <footer className="h-6 border-t border-editor-border bg-surface-400 px-3 flex items-center justify-between text-[11px] font-mono text-slate-400 select-none shrink-0">
+    <footer className="h-6 border-t border-slate-200/80 bg-white px-3 flex items-center justify-between text-[11px] font-mono text-slate-500 select-none shrink-0">
       {/* Left Sync Status */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 text-emerald-400">
+        <div className="flex items-center gap-1.5 text-emerald-600 font-medium">
           <Wifi className="h-3 w-3" />
-          <span className="hidden sm:inline">CRDT Sync Active</span>
+          <span className="hidden sm:inline">CRDT synced</span>
         </div>
 
         <div className="hidden md:flex items-center gap-1">
           {isSaving ? (
-            <span className="text-gold-400 flex items-center gap-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-gold-400 animate-ping" />
+            <span className="text-blue-600 flex items-center gap-1 font-medium">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-600" />
               Saving...
             </span>
           ) : hasDirty ? (
-            <span className="text-gold-400 flex items-center gap-1">
+            <span className="text-amber-600 flex items-center gap-1 font-medium">
               <AlertCircle className="h-3 w-3" />
               {dirtyFileIds.length} unsaved
             </span>
           ) : (
-            <span className="text-slate-500 flex items-center gap-1">
+            <span className="text-slate-400 flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
               Saved
             </span>
@@ -57,45 +57,44 @@ export const WorkspaceFooter: React.FC<WorkspaceFooterProps> = ({
         <span>
           Ln {cursorPosition.line}, Col {cursorPosition.column}
         </span>
-        <span className="hidden sm:inline text-slate-600">|</span>
+        <span className="hidden sm:inline text-slate-300">|</span>
         <span className="hidden sm:inline">Spaces: 2</span>
-        <span className="hidden sm:inline text-slate-600">|</span>
+        <span className="hidden sm:inline text-slate-300">|</span>
         <span className="hidden sm:inline">UTF-8</span>
-        <span className="hidden sm:inline text-slate-600">|</span>
+        <span className="hidden sm:inline text-slate-300">|</span>
 
-        {/* Compiler / Extension Status Chip */}
+        {/* Compiler / Extension Status */}
         <button
           onClick={onOpenExtensions}
-          className="flex items-center gap-1 hover:text-white px-1.5 py-0.5 rounded hover:bg-surface-200 transition-colors"
+          className="flex items-center gap-1 hover:text-slate-900 px-1 py-0.5 rounded hover:bg-slate-100 transition-colors"
           title={
             isDefaultCompiler
               ? 'Default Built-in Core Compiler (C & C++)'
               : isExtInstalled
               ? `${matchingExt?.name} Installed & Ready`
-              : `Extension Required for ${language.toUpperCase()} execution (Click to install)`
+              : `Extension Required for ${language.toUpperCase()} execution`
           }
         >
           {isDefaultCompiler ? (
-            <span className="flex items-center gap-1 text-blue-400 font-semibold">
+            <span className="flex items-center gap-1 text-blue-600 font-medium">
               <Cpu className="h-3 w-3" />
-              <span>GCC (Default)</span>
+              <span>GCC</span>
             </span>
           ) : isExtInstalled ? (
-            <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+            <span className="flex items-center gap-1 text-emerald-600 font-medium">
               <Boxes className="h-3 w-3" />
-              <span>{matchingExt?.name.split(' ')[0] || language} (Active)</span>
+              <span>{matchingExt?.name.split(' ')[0] || language}</span>
             </span>
           ) : matchingExt ? (
-            <span className="flex items-center gap-1 text-amber-400 font-semibold">
+            <span className="flex items-center gap-1 text-amber-600 font-medium">
               <Boxes className="h-3 w-3" />
               <span>+ Install {matchingExt.name.split(' ')[0]}</span>
             </span>
           ) : null}
 
-          <span className="text-gold-400 font-bold uppercase ml-1">{language}</span>
+          <span className="text-slate-700 font-semibold uppercase ml-1">{language}</span>
         </button>
       </div>
     </footer>
   );
 };
-

@@ -353,7 +353,7 @@ export const WorkspacePage: React.FC = () => {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-editor-bg text-slate-200 overflow-hidden font-sans">
+    <div className="h-screen w-screen flex flex-col bg-white text-slate-900 overflow-hidden font-sans">
       {/* Workspace Header */}
       <WorkspaceHeader
         project={currentProject}
@@ -383,7 +383,7 @@ export const WorkspacePage: React.FC = () => {
         </div>
 
         {/* Center Monaco Editor & Sandbox Terminal */}
-        <div className="flex-1 flex flex-col min-w-0 bg-editor-bg overflow-hidden border-r border-editor-border">
+        <div className="flex-1 flex flex-col min-w-0 bg-white overflow-hidden border-r border-slate-200/80">
           {/* Editor Tabs Bar */}
           <EditorTabs files={fileTree} />
 
@@ -393,7 +393,7 @@ export const WorkspacePage: React.FC = () => {
               <Editor
                 height="100%"
                 language={activeLanguage}
-                theme="vs-dark"
+                theme="vs"
                 value={activeContent}
                 onChange={handleEditorChange}
                 onMount={handleEditorMount}
@@ -413,10 +413,10 @@ export const WorkspacePage: React.FC = () => {
               />
             ) : (
               <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-500 select-none">
-                <FileCode2 className="h-12 w-12 text-slate-600 mb-3" />
-                <h4 className="text-sm font-semibold text-slate-400">No File Selected</h4>
-                <p className="text-xs text-slate-500 mt-1 max-w-xs">
-                  Choose a file from the explorer on the left or create a new file to start coding.
+                <FileCode2 className="h-10 w-10 text-slate-400 mb-2.5" />
+                <h4 className="text-xs font-semibold text-slate-700">No file open</h4>
+                <p className="text-xs text-slate-400 mt-0.5 max-w-xs">
+                  Select a file from the explorer to begin editing.
                 </p>
               </div>
             )}
@@ -428,13 +428,13 @@ export const WorkspacePage: React.FC = () => {
 
         {/* Right Drawer Toggle Bar */}
         {!isRightPanelOpen && (
-          <div className="w-10 border-l border-editor-border bg-surface-400 flex flex-col items-center py-3 gap-3 shrink-0">
+          <div className="w-10 border-l border-slate-200/80 bg-slate-50/80 flex flex-col items-center py-3 gap-2.5 shrink-0">
             <button
               onClick={() => {
                 setIsRightPanelOpen(true);
                 setActiveSideTab('ai');
               }}
-              className="p-2 rounded-lg text-slate-400 hover:text-purple-400 hover:bg-surface-200 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
               title="Open Gemini AI Assistant"
             >
               <Bot className="h-4 w-4" />
@@ -445,12 +445,12 @@ export const WorkspacePage: React.FC = () => {
                 setIsRightPanelOpen(true);
                 setActiveSideTab('chat');
               }}
-              className="relative p-2 rounded-lg text-slate-400 hover:text-gold-400 hover:bg-surface-200 transition-colors"
+              className="relative p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
               title="Open Team Chat & Voice"
             >
               <MessageSquare className="h-4 w-4" />
               {unreadCount > 0 && (
-                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-gold-400 ring-2 ring-surface-400" />
+                <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-blue-600 ring-2 ring-white" />
               )}
             </button>
 
@@ -459,7 +459,7 @@ export const WorkspacePage: React.FC = () => {
                 setIsRightPanelOpen(true);
                 setActiveSideTab('extensions');
               }}
-              className="p-2 rounded-lg text-slate-400 hover:text-gold-400 hover:bg-surface-200 transition-colors"
+              className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
               title="Language Compilers & Extensions (Default: C & C++)"
             >
               <Boxes className="h-4 w-4" />
@@ -469,34 +469,34 @@ export const WorkspacePage: React.FC = () => {
 
         {/* Right Multi-Tab Communication Drawer */}
         {isRightPanelOpen && (
-          <div className="w-80 sm:w-96 flex flex-col bg-surface-300 border-l border-editor-border shrink-0 overflow-hidden animate-in slide-in-from-right-10 duration-200">
+          <div className="w-80 flex flex-col bg-white border-l border-slate-200/80 shrink-0 overflow-hidden animate-in slide-in-from-right-10 duration-200">
             {/* Tab Header Selector */}
-            <div className="h-10 px-3 border-b border-editor-border bg-surface-400 flex items-center justify-between shrink-0">
+            <div className="h-10 px-3 border-b border-slate-200/80 bg-slate-50/80 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-1 font-mono text-xs">
                 <button
                   onClick={() => setActiveSideTab('ai')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors ${
                     activeSideTab === 'ai'
-                      ? 'bg-purple-500/20 text-purple-300 font-semibold border border-purple-500/40'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-blue-700 font-semibold border border-slate-200 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
-                  <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                  <Sparkles className="h-3.5 w-3.5 text-blue-600" />
                   <span className="hidden sm:inline">Gemini AI</span>
                 </button>
 
                 <button
                   onClick={() => setActiveSideTab('chat')}
-                  className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
+                  className={`relative flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors ${
                     activeSideTab === 'chat'
-                      ? 'bg-gold-400/20 text-gold-300 font-semibold border border-gold-400/40'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-blue-700 font-semibold border border-slate-200 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                 >
-                  <MessageSquare className="h-3.5 w-3.5 text-gold-400" />
+                  <MessageSquare className="h-3.5 w-3.5 text-blue-600" />
                   <span className="hidden sm:inline">Chat</span>
                   {unreadCount > 0 && (
-                    <span className="ml-0.5 px-1 py-0.2 rounded-full bg-gold-400 text-background font-bold text-[9px]">
+                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-blue-600 text-white font-bold text-[9px]">
                       {unreadCount}
                     </span>
                   )}
@@ -504,21 +504,21 @@ export const WorkspacePage: React.FC = () => {
 
                 <button
                   onClick={() => setActiveSideTab('extensions')}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded transition-colors ${
+                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-colors ${
                     activeSideTab === 'extensions'
-                      ? 'bg-gold-400/20 text-gold-300 font-semibold border border-gold-400/40'
-                      : 'text-slate-400 hover:text-slate-200'
+                      ? 'bg-white text-blue-700 font-semibold border border-slate-200 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-900'
                   }`}
                   title="Language Compilers & Extensions"
                 >
-                  <Boxes className="h-3.5 w-3.5 text-gold-400" />
+                  <Boxes className="h-3.5 w-3.5 text-blue-600" />
                   <span>Extensions</span>
                 </button>
               </div>
 
               <button
                 onClick={() => setIsRightPanelOpen(false)}
-                className="text-slate-400 hover:text-white p-1"
+                className="text-slate-400 hover:text-slate-700 hover:bg-slate-100 p-1 rounded-md transition-colors"
                 title="Close side panel"
               >
                 <X className="h-4 w-4" />
@@ -529,23 +529,20 @@ export const WorkspacePage: React.FC = () => {
             {activeSideTab === 'ai' && (
               <div className="flex-1 flex flex-col p-3 space-y-2.5 overflow-hidden">
                 {/* Engine Status & AI Settings */}
-                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-surface-400 border border-surface-50 text-[11px] font-mono shrink-0">
+                <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] font-mono shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="relative flex h-2 w-2 shrink-0">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span className="text-slate-200 font-semibold truncate text-[11px]">
-                      {geminiApiKey ? 'Gemini 2.0 Flash • Live' : 'CodeSync AI • Neural Core Active'}
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-slate-700 font-semibold truncate text-[11px]">
+                      {geminiApiKey ? 'Gemini 2.0 • Active' : 'CodeSync AI • Active'}
                     </span>
                   </div>
 
                   <button
                     onClick={() => setIsApiKeyModalOpen(true)}
-                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-200 hover:bg-surface-100 border border-surface-50 text-[10px] text-slate-400 hover:text-slate-200 transition-all shrink-0"
+                    className="flex items-center gap-1 px-2 py-0.5 rounded bg-white hover:bg-slate-100 border border-slate-200 text-[10px] text-slate-600 hover:text-slate-900 transition-all shrink-0"
                     title="AI Engine Settings"
                   >
-                    <Key className="h-3 w-3 text-gold-400" />
+                    <Key className="h-3 w-3 text-blue-600" />
                     <span>Settings</span>
                   </button>
                 </div>
@@ -555,19 +552,19 @@ export const WorkspacePage: React.FC = () => {
                   <button
                     onClick={() => explainCode(activeContent, activeLanguage)}
                     disabled={isAiLoading || !activeContent}
-                    className="p-2 rounded-lg border border-surface-50 bg-surface-200/90 text-slate-300 hover:border-purple-400/40 hover:text-purple-300 text-left transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50/40 transition-all flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
                   >
-                    <Zap className="h-3.5 w-3.5 text-yellow-400 shrink-0" />
-                    <span>⚡ Explain File</span>
+                    <Zap className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <span>Explain</span>
                   </button>
 
                   <button
                     onClick={() => refactorCode(activeContent, activeLanguage)}
                     disabled={isAiLoading || !activeContent}
-                    className="p-2 rounded-lg border border-surface-50 bg-surface-200/90 text-slate-300 hover:border-purple-400/40 hover:text-purple-300 text-left transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50/40 transition-all flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                    <span>✨ Refactor</span>
+                    <Sparkles className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                    <span>Refactor</span>
                   </button>
 
                   <button
@@ -579,42 +576,42 @@ export const WorkspacePage: React.FC = () => {
                       )
                     }
                     disabled={isAiLoading || !activeContent}
-                    className="p-2 rounded-lg border border-surface-50 bg-surface-200/90 text-slate-300 hover:border-purple-400/40 hover:text-purple-300 text-left transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50/40 transition-all flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
                   >
-                    <Wrench className="h-3.5 w-3.5 text-rose-400 shrink-0" />
-                    <span>🛠️ Fix Bugs</span>
+                    <Wrench className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                    <span>Fix bugs</span>
                   </button>
 
                   <button
                     onClick={() => generateTests(activeContent, activeLanguage)}
                     disabled={isAiLoading || !activeContent}
-                    className="p-2 rounded-lg border border-surface-50 bg-surface-200/90 text-slate-300 hover:border-purple-400/40 hover:text-purple-300 text-left transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-700 hover:border-blue-400 hover:text-blue-700 hover:bg-blue-50/40 transition-all flex items-center gap-1.5 disabled:opacity-50 shadow-xs"
                   >
-                    <FlaskConical className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
-                    <span>🧪 Add Tests</span>
+                    <FlaskConical className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    <span>Tests</span>
                   </button>
                 </div>
 
                 {/* AI Chat Stream & Message History */}
-                <div className="flex-1 overflow-y-auto space-y-3 p-3 rounded-xl border border-surface-50 bg-surface-400/60 custom-scrollbar text-xs">
+                <div className="flex-1 overflow-y-auto space-y-3 p-3 rounded-xl border border-slate-200/80 bg-slate-50/60 custom-scrollbar text-xs">
                   {aiMessages.map((msg) => (
                     <div
                       key={msg.id}
                       className={`p-3 rounded-xl leading-relaxed space-y-2 font-sans ${
                         msg.sender === 'ai'
-                          ? 'bg-purple-950/30 border border-purple-800/30 text-purple-100'
-                          : 'bg-surface-200 text-white border border-surface-50 ml-4'
+                          ? 'bg-white border border-slate-200 text-slate-800 shadow-xs'
+                          : 'bg-blue-50 text-blue-900 border border-blue-200/80 ml-4 shadow-xs'
                       }`}
                     >
                       <div className="flex items-center justify-between text-[10px] font-mono text-slate-400">
-                        <span className="font-bold flex items-center gap-1">
+                        <span className="font-semibold flex items-center gap-1">
                           {msg.sender === 'ai' ? (
                             <>
-                              <Bot className="h-3.5 w-3.5 text-purple-400" />{' '}
-                              <span>{msg.model?.includes('gemini') ? 'Gemini 2.0' : 'CodeSync AI'}</span>
+                              <Bot className="h-3.5 w-3.5 text-blue-600" />{' '}
+                              <span className="text-slate-700">{msg.model?.includes('gemini') ? 'Gemini 2.0' : 'CodeSync AI'}</span>
                             </>
                           ) : (
-                            '👤 You'
+                            <span className="text-blue-700">👤 You</span>
                           )}
                         </span>
                         <span>{msg.timestamp}</span>
@@ -626,15 +623,15 @@ export const WorkspacePage: React.FC = () => {
 
                       {/* Code Snippet Block with Apply, Run & Copy Actions */}
                       {msg.codeSnippet && (
-                        <div className="mt-2 rounded-lg border border-surface-50 bg-surface-400 p-2.5 space-y-2 font-mono text-[11px]">
-                          <div className="flex items-center justify-between border-b border-surface-50/60 pb-1.5 text-slate-400">
-                            <span className="text-purple-300 text-[10px]">
+                        <div className="mt-2 rounded-lg border border-slate-200 bg-slate-900 p-2.5 space-y-2 font-mono text-[11px] text-slate-100">
+                          <div className="flex items-center justify-between border-b border-slate-800 pb-1.5 text-slate-400">
+                            <span className="text-blue-400 text-[10px]">
                               Generated Code
                             </span>
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => handleCopySnippet(msg.codeSnippet!, msg.id)}
-                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-surface-200 text-slate-300 hover:text-white text-[10px]"
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-800 text-slate-300 hover:text-white text-[10px]"
                               >
                                 {copiedSnippetId === msg.id ? (
                                   <Check className="h-3 w-3 text-emerald-400" />
@@ -646,10 +643,10 @@ export const WorkspacePage: React.FC = () => {
 
                               <button
                                 onClick={() => runCode(msg.language || activeLanguage, msg.codeSnippet!)}
-                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold transition-all"
+                                className="flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-medium transition-all"
                                 title="Run this snippet in sandbox"
                               >
-                                <Play className="h-3 w-3 fill-emerald-300" />
+                                <Play className="h-3 w-3 fill-white" />
                                 <span>Run</span>
                               </button>
 
@@ -658,7 +655,7 @@ export const WorkspacePage: React.FC = () => {
                                   onClick={() =>
                                     handleApplyCodeToEditor(msg.codeSnippet!, msg.id)
                                   }
-                                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-semibold transition-all"
+                                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-medium transition-all"
                                 >
                                   {appliedSnippetId === msg.id ? (
                                     <CheckCheck className="h-3 w-3 text-emerald-300" />
@@ -682,9 +679,9 @@ export const WorkspacePage: React.FC = () => {
                   ))}
 
                   {isAiLoading && (
-                    <div className="flex items-center gap-2 p-3 rounded-lg bg-purple-950/30 border border-purple-800/30 text-purple-300 text-xs font-mono">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      <span>Gemini 2.0 is reasoning over your codebase...</span>
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700 text-xs font-mono">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600" />
+                      <span>Thinking...</span>
                     </div>
                   )}
 
@@ -694,20 +691,20 @@ export const WorkspacePage: React.FC = () => {
                 {/* AI Prompt Input Bar */}
                 <form
                   onSubmit={handleSendAi}
-                  className="flex items-center gap-1.5 pt-2 border-t border-surface-50/60"
+                  className="flex items-center gap-1.5 pt-2 border-t border-slate-100"
                 >
                   <input
                     type="text"
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Ask AI to refactor, debug, or write logic..."
-                    className="flex-1 rounded-lg border border-surface-50 bg-surface-200 px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-purple-400 focus:outline-none"
+                    placeholder="Ask AI a question or request code..."
+                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                   />
 
                   <button
                     type="submit"
                     disabled={!aiPrompt.trim() || isAiLoading}
-                    className="p-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors disabled:opacity-50"
+                    className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50"
                   >
                     <Send className="h-3.5 w-3.5" />
                   </button>
@@ -715,7 +712,7 @@ export const WorkspacePage: React.FC = () => {
                   <button
                     type="button"
                     onClick={clearAiHistory}
-                    className="p-2 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-surface-200 transition-colors"
+                    className="p-2 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                     title="Clear AI conversation"
                   >
                     <Trash2 className="h-3.5 w-3.5" />

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Settings,
   Lock,
   Globe,
   Loader2,
-  Save,
 } from 'lucide-react';
 import { useProjectStore } from '../../stores/projectStore';
 import { IProject, ProjectVisibility } from '../../types';
@@ -62,7 +60,7 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
     setError(null);
 
     if (!name.trim()) {
-      setError('Please provide a valid project name.');
+      setError('Please provide a project name.');
       return;
     }
 
@@ -80,153 +78,135 @@ export const ProjectSettingsModal: React.FC<ProjectSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto glass-card rounded-2xl border border-surface-50 p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 custom-scrollbar">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto glass-card rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-glass-dropdown animate-in zoom-in-95 duration-150 custom-scrollbar">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-lg p-1.5 text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
         {/* Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-200 border border-gold-400/30 text-gold-300 shadow-gold-sm">
-            <Settings className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">Workspace Settings</h3>
-            <p className="text-xs text-slate-400">Configure visibility, metadata, and tags</p>
-          </div>
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Project settings</h2>
+          <p className="text-xs text-slate-500">Configure name, visibility, and tags</p>
         </div>
 
         {error && (
-          <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs text-slate-300 mb-1 font-medium">Project Name</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Project name</label>
             <input
               type="text"
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full rounded-lg border border-surface-50 bg-surface-300/80 px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
               maxLength={60}
             />
           </div>
 
           <div>
-            <label className="block text-xs text-slate-300 mb-1 font-medium">Description</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">Description</label>
             <textarea
-              rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description..."
-              className="w-full rounded-lg border border-surface-50 bg-surface-300/80 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors resize-none"
-              maxLength={300}
+              rows={2}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 resize-none transition-colors"
+              maxLength={200}
             />
           </div>
 
-          {/* Visibility Selector */}
           <div>
-            <label className="block text-xs text-slate-300 mb-2 font-medium">Access & Visibility</label>
-            <div className="grid grid-cols-2 gap-3">
+            <label className="block text-xs font-medium text-slate-700 mb-1.5">Visibility</label>
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setVisibility('private')}
-                className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-colors ${
                   visibility === 'private'
-                    ? 'border-gold-400 bg-surface-200/90 text-white ring-1 ring-gold-400'
-                    : 'border-surface-50 bg-surface-300/40 text-slate-400 hover:border-slate-600'
+                    ? 'border-blue-600 bg-blue-50/70 text-slate-900 font-medium'
+                    : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <Lock className="h-4 w-4 text-gold-400 shrink-0" />
+                <Lock className="h-3.5 w-3.5 text-slate-500" />
                 <div>
-                  <div className="text-xs font-semibold text-white">Private</div>
-                  <div className="text-[10px] text-slate-400">Only invited collaborators</div>
+                  <div className="font-semibold text-slate-900">Private</div>
+                  <div className="text-[10px] text-slate-500">Only invited members</div>
                 </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setVisibility('public')}
-                className={`flex items-center gap-2.5 p-3 rounded-lg border text-left transition-all ${
+                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-colors ${
                   visibility === 'public'
-                    ? 'border-gold-400 bg-surface-200/90 text-white ring-1 ring-gold-400'
-                    : 'border-surface-50 bg-surface-300/40 text-slate-400 hover:border-slate-600'
+                    ? 'border-blue-600 bg-blue-50/70 text-slate-900 font-medium'
+                    : 'border-slate-200 bg-white/70 text-slate-600 hover:bg-slate-50'
                 }`}
               >
-                <Globe className="h-4 w-4 text-sky-400 shrink-0" />
+                <Globe className="h-3.5 w-3.5 text-sky-500" />
                 <div>
-                  <div className="text-xs font-semibold text-white">Public</div>
-                  <div className="text-[10px] text-slate-400">Anyone with link can view</div>
+                  <div className="font-semibold text-slate-900">Public</div>
+                  <div className="text-[10px] text-slate-500">Accessible by link</div>
                 </div>
               </button>
             </div>
           </div>
 
-          {/* Tags */}
           <div>
-            <label className="block text-xs text-slate-300 mb-1 font-medium">Tags (Up to 5)</label>
-            <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-lg border border-surface-50 bg-surface-300/80 min-h-[42px]">
+            <label className="block text-xs font-medium text-slate-700 mb-1">Tags (press Enter)</label>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
               {tags.map((tag) => (
                 <span
                   key={tag}
-                  className="inline-flex items-center gap-1 rounded bg-gold-400/10 px-2 py-0.5 text-xs font-mono font-medium text-gold-300 border border-gold-400/20"
+                  className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-mono text-slate-700 border border-slate-200"
                 >
                   #{tag}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(tag)}
-                    className="hover:text-gold-100 font-bold"
+                    className="text-slate-400 hover:text-slate-700"
                   >
                     ×
                   </button>
                 </span>
               ))}
-              {tags.length < 5 && (
-                <input
-                  type="text"
-                  value={tagInput}
-                  onChange={(e) => setTagInput(e.target.value)}
-                  onKeyDown={handleAddTag}
-                  placeholder={tags.length === 0 ? "Type tag & press Enter" : "Add tag..."}
-                  className="flex-1 min-w-[100px] bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none font-mono"
-                />
-              )}
             </div>
+            {tags.length < 5 && (
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleAddTag}
+                placeholder="Add tag..."
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none font-mono"
+              />
+            )}
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-surface-50/60">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-4 py-2 text-xs font-medium text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+              className="px-3.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isActionLoading}
-              className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-gold-500 to-gold-400 px-4 py-2 text-xs font-semibold text-background shadow-md hover:shadow-gold-glow hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-4 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-slate-800 transition-all disabled:opacity-50"
             >
-              {isActionLoading ? (
-                <>
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Saving...</span>
-                </>
-              ) : (
-                <>
-                  <Save className="h-3.5 w-3.5" />
-                  <span>Save Changes</span>
-                </>
-              )}
+              {isActionLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <span>Save changes</span>
             </button>
           </div>
         </form>

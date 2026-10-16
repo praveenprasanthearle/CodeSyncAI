@@ -7,7 +7,6 @@ import {
   Copy,
   Check,
   Loader2,
-  Users,
   Link as LinkIcon,
   Crown,
 } from 'lucide-react';
@@ -60,7 +59,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
     try {
       await addMember(project.id, emailOrUsername.trim(), role);
       setEmailOrUsername('');
-      setSuccessMsg(`Collaborator invited successfully as ${role}.`);
+      setSuccessMsg(`Invited collaborator as ${role}.`);
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       setError(err.message || 'Failed to invite collaborator.');
@@ -86,82 +85,68 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto glass-card rounded-2xl border border-surface-50 p-6 sm:p-8 shadow-2xl animate-in zoom-in-95 duration-200 custom-scrollbar">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
+      <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto glass-card rounded-2xl border border-slate-200 p-6 sm:p-7 shadow-glass-dropdown animate-in zoom-in-95 duration-150 custom-scrollbar">
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-5 top-5 rounded-lg p-1.5 text-slate-400 hover:bg-surface-200 hover:text-white transition-colors"
+          className="absolute right-4 top-4 rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 transition-colors"
         >
-          <X className="h-5 w-5" />
+          <X className="h-4 w-4" />
         </button>
 
         {/* Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-surface-200 border border-gold-400/30 text-gold-300 shadow-gold-sm">
-            <Users className="h-5 w-5" />
-          </div>
-          <div>
-            <h3 className="text-xl font-bold text-white tracking-tight">Collaborator Access</h3>
-            <p className="text-xs text-slate-400">
-              Manage teammates and realtime editing permissions for <span className="text-gold-300 font-semibold">{project.name}</span>
-            </p>
-          </div>
+        <div className="mb-5">
+          <h2 className="text-lg font-bold text-slate-900 tracking-tight">Members</h2>
+          <p className="text-xs text-slate-500">
+            Collaborators on <span className="font-semibold text-slate-800">{project.name}</span>
+          </p>
         </div>
 
         {/* Alerts */}
         {error && (
-          <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-950/40 p-3 text-xs text-rose-300">
+          <div className="mb-4 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700">
             {error}
           </div>
         )}
         {successMsg && (
-          <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-950/40 p-3 text-xs text-emerald-300">
+          <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-700">
             {successMsg}
           </div>
         )}
 
         {/* Quick Link Share Bar */}
-        <div className="mb-6 rounded-xl border border-surface-50 bg-surface-300/40 p-3.5 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 overflow-hidden">
-            <div className="p-2 rounded-lg bg-surface-200 border border-surface-50 text-gold-400 shrink-0">
-              <LinkIcon className="h-4 w-4" />
-            </div>
-            <div className="truncate">
-              <div className="text-xs font-semibold text-white">Shareable Workspace Link</div>
-              <div className="text-[11px] font-mono text-slate-400 truncate">
-                {window.location.origin}/workspace/{project.id}
-              </div>
+        <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50/70 p-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <LinkIcon className="h-4 w-4 text-slate-400 shrink-0" />
+            <div className="truncate text-xs font-mono text-slate-600">
+              {window.location.origin}/workspace/{project.id}
             </div>
           </div>
           <button
             type="button"
             onClick={handleCopyLink}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all shrink-0 ${
-              copied
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                : 'bg-surface-200 hover:bg-surface-100 text-slate-200 border border-surface-50'
-            }`}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
           >
             {copied ? (
               <>
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Copied!</span>
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                <span>Copied</span>
               </>
             ) : (
               <>
                 <Copy className="h-3.5 w-3.5" />
-                <span>Copy Link</span>
+                <span>Copy link</span>
               </>
             )}
           </button>
         </div>
 
-        {/* Invite Form (For Owners and Editors) */}
+        {/* Invite Form */}
         {isOwner && (
-          <form onSubmit={handleInvite} className="mb-6 space-y-3">
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 font-semibold">
-              Invite New Collaborator
+          <form onSubmit={handleInvite} className="mb-5 space-y-2">
+            <label className="block text-xs font-medium text-slate-700">
+              Invite collaborator
             </label>
             <div className="flex gap-2">
               <input
@@ -169,12 +154,12 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
                 value={emailOrUsername}
                 onChange={(e) => setEmailOrUsername(e.target.value)}
                 placeholder="colleague@codesync.ai or @username"
-                className="flex-1 rounded-lg border border-surface-50 bg-surface-300/80 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none focus:ring-1 focus:ring-gold-400 transition-colors"
+                className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-600 transition-colors"
               />
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as 'editor' | 'viewer')}
-                className="rounded-lg border border-surface-50 bg-surface-200 px-3 py-2 text-xs text-white focus:border-gold-400 focus:outline-none cursor-pointer"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:border-blue-600 focus:outline-none cursor-pointer"
               >
                 <option value="editor">Editor</option>
                 <option value="viewer">Viewer</option>
@@ -182,7 +167,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
               <button
                 type="submit"
                 disabled={isActionLoading}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-gold-500 to-gold-400 px-3.5 py-2 text-xs font-semibold text-background shadow-md hover:shadow-gold-glow hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50"
+                className="inline-flex items-center gap-1 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-slate-800 transition-all disabled:opacity-50"
               >
                 {isActionLoading ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -196,12 +181,12 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
         )}
 
         {/* Members List */}
-        <div className="space-y-3">
-          <label className="block text-xs font-mono uppercase tracking-wider text-slate-300 font-semibold">
-            Active Collaborators ({members.length})
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-700">
+            Members ({members.length})
           </label>
 
-          <div className="divide-y divide-surface-50/60 rounded-xl border border-surface-50 bg-surface-300/30 overflow-hidden">
+          <div className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white overflow-hidden">
             {members.map((member, index) => {
               const u = member.user;
               const isMemberOwner = member.role === 'owner';
@@ -209,38 +194,38 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
               return (
                 <div
                   key={u?.id || index}
-                  className="flex items-center justify-between p-3.5 hover:bg-surface-200/40 transition-colors"
+                  className="flex items-center justify-between p-3 hover:bg-slate-50/60 transition-colors text-xs"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     {u?.avatarUrl ? (
                       <img
                         src={u.avatarUrl}
                         alt={u.name || 'User'}
-                        className="h-8 w-8 rounded-lg bg-surface-200 object-cover border border-surface-50"
+                        className="h-7 w-7 rounded-md bg-slate-100 object-cover"
                       />
                     ) : (
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-tr from-gold-600 to-gold-400 font-bold text-xs text-background">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-900 font-semibold text-xs text-white">
                         {(u?.name || 'U').charAt(0).toUpperCase()}
                       </div>
                     )}
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-white">{u?.name || 'User'}</span>
+                        <span className="font-semibold text-slate-900">{u?.name || 'User'}</span>
                         {isMemberOwner && (
-                          <span title="Project Owner">
-                            <Crown className="h-3 w-3 text-gold-400 fill-gold-400" />
+                          <span title="Owner">
+                            <Crown className="h-3 w-3 text-amber-500 fill-amber-500" />
                           </span>
                         )}
                       </div>
                       <div className="text-[11px] font-mono text-slate-400">
-                        @{u?.username || 'user'} • {u?.email}
+                        @{u?.username || 'user'}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     {isMemberOwner ? (
-                      <span className="inline-flex items-center gap-1 rounded bg-gold-400/10 px-2 py-0.5 text-[11px] font-mono font-medium text-gold-300 border border-gold-400/20">
+                      <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 text-[10px] font-mono font-medium text-slate-600">
                         <Shield className="h-2.5 w-2.5" />
                         Owner
                       </span>
@@ -249,7 +234,7 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
                         <select
                           value={member.role}
                           onChange={(e) => handleRoleChange(u.id, e.target.value as ProjectRole)}
-                          className="rounded border border-surface-50 bg-surface-200 px-2 py-1 text-[11px] text-white focus:border-gold-400 focus:outline-none"
+                          className="rounded border border-slate-200 bg-white px-2 py-0.5 text-[11px] text-slate-700 focus:border-blue-600 focus:outline-none"
                         >
                           <option value="editor">Editor</option>
                           <option value="viewer">Viewer</option>
@@ -257,14 +242,14 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRemove(u.id)}
-                          className="p-1 text-slate-400 hover:text-rose-400 rounded transition-colors"
-                          title="Remove member"
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
+                          title="Remove"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                     ) : (
-                      <span className="inline-flex items-center gap-1 rounded bg-surface-100 px-2 py-0.5 text-[11px] font-mono font-medium text-slate-300 border border-surface-50">
+                      <span className="inline-flex items-center rounded bg-slate-100 px-2 py-0.5 text-[10px] font-mono font-medium text-slate-600">
                         {member.role}
                       </span>
                     )}
@@ -276,11 +261,11 @@ export const ProjectMembersModal: React.FC<ProjectMembersModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end pt-5 mt-6 border-t border-surface-50/60">
+        <div className="flex items-center justify-end pt-4 mt-5 border-t border-slate-100">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-surface-100 px-4 py-2 text-xs font-medium text-slate-200 hover:bg-surface-50 hover:text-white transition-colors"
+            className="rounded-lg border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 transition-colors"
           >
             Done
           </button>

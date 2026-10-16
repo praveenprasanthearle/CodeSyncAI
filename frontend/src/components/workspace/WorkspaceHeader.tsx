@@ -41,19 +41,19 @@ interface WorkspaceHeaderProps {
 const getTemplateBadge = (template?: ProjectTemplate) => {
   switch (template) {
     case 'c':
-      return { label: 'C Standard (GCC)', icon: Cpu, color: 'text-blue-400 bg-blue-400/10 border-blue-400/30' };
+      return { label: 'C (GCC)', icon: Cpu, color: 'text-blue-600 bg-blue-50 border-blue-200' };
     case 'cpp':
-      return { label: 'C++20 (G++)', icon: Cpu, color: 'text-indigo-400 bg-indigo-400/10 border-indigo-400/30' };
+      return { label: 'C++20 (G++)', icon: Cpu, color: 'text-indigo-600 bg-indigo-50 border-indigo-200' };
     case 'react':
-      return { label: 'React', icon: Atom, color: 'text-sky-400 bg-sky-400/10 border-sky-400/30' };
+      return { label: 'React', icon: Atom, color: 'text-sky-600 bg-sky-50 border-sky-200' };
     case 'nodejs':
-      return { label: 'Node.js', icon: Server, color: 'text-emerald-400 bg-emerald-400/10 border-emerald-400/30' };
+      return { label: 'Node.js', icon: Server, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' };
     case 'python':
-      return { label: 'Python 3', icon: Terminal, color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/30' };
+      return { label: 'Python 3', icon: Terminal, color: 'text-amber-600 bg-amber-50 border-amber-200' };
     case 'go':
-      return { label: 'Go', icon: Zap, color: 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30' };
+      return { label: 'Go', icon: Zap, color: 'text-cyan-600 bg-cyan-50 border-cyan-200' };
     default:
-      return { label: 'Blank', icon: FileCode, color: 'text-slate-300 bg-slate-400/10 border-slate-400/30' };
+      return { label: 'Blank', icon: FileCode, color: 'text-slate-600 bg-slate-50 border-slate-200' };
   }
 };
 
@@ -76,28 +76,28 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
   const TemplateIcon = badge.icon;
 
   return (
-    <header className="h-12 border-b border-editor-border bg-surface-300/90 backdrop-blur-xl px-4 flex items-center justify-between shrink-0 select-none">
+    <header className="h-11 border-b border-slate-200/80 bg-white/85 backdrop-blur-md px-3.5 flex items-center justify-between shrink-0 select-none text-slate-800">
       {/* Left Breadcrumb & Workspace Info */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center gap-2.5 min-w-0">
         <Link
           to="/dashboard"
-          className="flex items-center gap-1 text-xs text-slate-400 hover:text-white px-2 py-1 rounded hover:bg-surface-200 transition-colors"
+          className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-900 px-1.5 py-1 rounded-md hover:bg-slate-100 transition-colors"
           title="Back to Dashboard"
         >
-          <ChevronLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Dashboard</span>
+          <ChevronLeft className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline font-medium">Projects</span>
         </Link>
 
-        <span className="text-slate-600">/</span>
+        <span className="text-slate-300">/</span>
 
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-xs font-sans">
+          <span className="text-xs font-semibold text-slate-900 truncate max-w-[160px] sm:max-w-xs font-sans">
             {project?.name || 'Workspace'}
           </span>
 
           {/* Template Badge */}
           <span
-            className={`hidden sm:inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-mono font-medium border ${badge.color}`}
+            className={`hidden sm:inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-mono font-medium border ${badge.color}`}
           >
             <TemplateIcon className="h-3 w-3" />
             <span>{badge.label}</span>
@@ -105,20 +105,20 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
 
           {/* Visibility */}
           {project?.visibility === 'public' ? (
-            <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono text-sky-400">
+            <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono text-sky-600">
               <Globe className="h-3 w-3" /> Public
             </span>
           ) : (
-            <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono text-slate-400">
+            <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono text-slate-500">
               <Lock className="h-3 w-3" /> Private
             </span>
           )}
         </div>
       </div>
 
-      {/* Right Action Controls */}
-      <div className="flex items-center gap-2 sm:gap-3">
-        {/* Live Collaborators Presence Stack */}
+      {/* Right Actions */}
+      <div className="flex items-center gap-2">
+        {/* Collaborators Presence Bar */}
         <div className="flex items-center mr-1">
           <CollaboratorPresenceBar
             collaborators={collaborators}
@@ -132,85 +132,89 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
           <button
             onClick={saveAllDirtyFiles}
             disabled={isSaving}
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-surface-200 hover:bg-surface-100 text-gold-300 border border-gold-400/40 px-3 py-1.5 text-xs font-medium transition-all"
+            className="inline-flex items-center gap-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 text-xs font-medium transition-all"
             title="Save changes (Ctrl+S)"
           >
-            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            {isSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
             <span>Save</span>
           </button>
         )}
 
-        {/* Snapshot / Version History Button */}
+        {/* Snapshot */}
         {onOpenSnapshot && (
           <button
             onClick={onOpenSnapshot}
-            className="hidden lg:inline-flex items-center gap-1.5 rounded-lg bg-surface-200 hover:bg-surface-100 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white border border-surface-50 transition-all"
-            title="Take a point-in-time snapshot"
+            className="hidden lg:inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition-all"
+            title="Snapshot"
           >
-            <Camera className="h-3.5 w-3.5 text-gold-400" />
+            <Camera className="h-3.5 w-3.5 text-slate-500" />
             <span className="hidden xl:inline">Snapshot</span>
           </button>
         )}
 
+        {/* History */}
         {onOpenHistory && (
           <button
             onClick={onOpenHistory}
-            className="hidden sm:inline-flex items-center gap-1.5 rounded-lg bg-surface-200 hover:bg-surface-100 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white border border-surface-50 transition-all"
-            title="View point-in-time version history & snapshots"
+            className="hidden sm:inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition-all"
+            title="History"
           >
-            <History className="h-3.5 w-3.5 text-gold-400" />
+            <History className="h-3.5 w-3.5 text-slate-500" />
             <span className="hidden md:inline">History</span>
           </button>
         )}
 
-        {/* Invite Button */}
+        {/* Invite / Share */}
         <button
           onClick={onOpenInviteModal}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-surface-200 hover:bg-surface-100 px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white border border-surface-50 transition-all"
+          className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white hover:bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 transition-all"
+          title="Share workspace"
         >
-          <Share2 className="h-3.5 w-3.5 text-sky-400" />
-          <span className="hidden sm:inline">Collaborate</span>
+          <Share2 className="h-3.5 w-3.5 text-slate-500" />
+          <span className="hidden sm:inline">Share</span>
         </button>
 
-        {/* Extensions Marketplace Button */}
+        {/* Extensions */}
         {onToggleExtensionsPanel && (
           <button
             onClick={onToggleExtensionsPanel}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-all ${
+            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border transition-all ${
               isExtensionsPanelOpen
-                ? 'bg-gold-400/20 text-gold-300 border-gold-400/40 shadow-sm'
-                : 'bg-surface-200 text-slate-300 border-surface-50 hover:text-white'
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
             }`}
-            title="Manage Language Compilers & Extensions (Default: C & C++)"
+            title="Extensions"
           >
-            <Boxes className="h-3.5 w-3.5 text-gold-400" />
+            <Boxes className="h-3.5 w-3.5" />
             <span className="hidden xl:inline">Extensions</span>
           </button>
         )}
 
-        {/* AI Assistant Toggle Button */}
+        {/* AI Assistant */}
         <button
           onClick={onToggleAiPanel}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium border transition-all ${
+          className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-medium border transition-all ${
             isAiPanelOpen
-              ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm'
-              : 'bg-surface-200 text-slate-300 border-surface-50 hover:text-white'
+              ? 'bg-blue-50 text-blue-700 border-blue-300 font-semibold'
+              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
           }`}
+          title="AI Assistant"
         >
-          <Bot className="h-3.5 w-3.5 text-purple-400" />
-          <span className="hidden md:inline">AI Pair</span>
+          <Bot className="h-3.5 w-3.5 text-blue-600" />
+          <span className="hidden md:inline">AI</span>
         </button>
 
-        {/* Run Code Button */}
+        {/* Run Button */}
         <button
           onClick={onRunCode}
           disabled={isRunningCode}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 px-3.5 py-1.5 text-xs font-semibold text-white shadow-md hover:shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+          className="inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 px-3 py-1 text-xs font-medium text-white shadow-xs transition-all disabled:opacity-50"
+          title="Run code (Ctrl+Enter)"
         >
           {isRunningCode ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
-            <Play className="h-3.5 w-3.5 fill-white" />
+            <Play className="h-3 w-3 fill-white" />
           )}
           <span>Run</span>
         </button>

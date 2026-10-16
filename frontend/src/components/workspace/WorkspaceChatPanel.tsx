@@ -115,25 +115,22 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
   const typingNames = Object.values(typingUsers).map((u) => u.username);
 
   return (
-    <div className="flex flex-col h-full bg-surface-300 select-none overflow-hidden">
+    <div className="flex flex-col h-full bg-slate-50/60 select-none overflow-hidden">
       {/* WebRTC Voice Channel Box */}
-      <div className="p-3 border-b border-editor-border">
+      <div className="p-3 border-b border-slate-200/80">
         <VoiceChannelWidget projectId={projectId} />
       </div>
 
       {/* Messages Feed */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3 custom-scrollbar text-xs">
         {isLoading && messages.length === 0 ? (
-          <div className="flex items-center justify-center p-6 text-slate-500 font-mono text-xs">
+          <div className="flex items-center justify-center p-6 text-slate-400 font-mono text-xs">
             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            <span>Loading channel history...</span>
+            <span>Loading history...</span>
           </div>
         ) : messages.length === 0 ? (
-          <div className="p-6 text-center text-slate-500 font-mono text-xs">
+          <div className="p-6 text-center text-slate-400 font-mono text-xs">
             <p>No messages yet.</p>
-            <p className="text-[11px] text-slate-600 mt-1">
-              Start the conversation with your team!
-            </p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -142,7 +139,7 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
             return (
               <div
                 key={msg.id}
-                className={`group flex items-start gap-2.5 ${
+                className={`group flex items-start gap-2 ${
                   isMe ? 'flex-row-reverse' : ''
                 }`}
               >
@@ -152,7 +149,7 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
                     `https://api.dicebear.com/7.x/bottts/svg?seed=${msg.sender?.username || 'user'}`
                   }
                   alt={msg.sender?.username}
-                  className="h-6 w-6 rounded-full bg-surface-200 object-cover ring-1 ring-surface-50 shrink-0 mt-0.5"
+                  className="h-6 w-6 rounded-full bg-slate-100 object-cover ring-1 ring-white shrink-0 mt-0.5"
                 />
 
                 <div
@@ -162,7 +159,7 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
                 >
                   {/* Sender Name & Timestamp */}
                   <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 mb-0.5 px-1">
-                    <span className="font-semibold text-slate-300">
+                    <span className="font-medium text-slate-600">
                       {isMe ? 'You' : msg.sender?.name || msg.sender?.username}
                     </span>
                     <span>•</span>
@@ -177,7 +174,7 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
                     {isMe && (
                       <button
                         onClick={() => deleteMessage(msg.id)}
-                        className="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 p-0.5 transition-opacity"
+                        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 p-0.5 transition-opacity"
                         title="Delete message"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -189,8 +186,8 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
                   <div
                     className={`p-2.5 rounded-xl text-xs leading-relaxed break-words font-sans ${
                       isMe
-                        ? 'bg-gold-500 text-background font-medium rounded-tr-none shadow-md'
-                        : 'bg-surface-200 text-slate-100 border border-surface-50 rounded-tl-none'
+                        ? 'bg-slate-900 text-white rounded-tr-none shadow-xs'
+                        : 'bg-white text-slate-800 border border-slate-200/90 rounded-tl-none shadow-xs'
                     }`}
                   >
                     <div>{msg.text}</div>
@@ -207,13 +204,13 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
                         }
                         className={`mt-1.5 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono transition-all ${
                           isMe
-                            ? 'bg-background/20 text-background hover:bg-background/30'
-                            : 'bg-gold-400/10 text-gold-300 hover:bg-gold-400/20 border border-gold-400/30'
+                            ? 'bg-white/20 text-white hover:bg-white/30'
+                            : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
                         }`}
-                        title="Click to jump to code location in editor"
+                        title="Jump to code"
                       >
                         <Code2 className="h-3 w-3 shrink-0" />
-                        <span className="truncate max-w-[160px]">
+                        <span className="truncate max-w-[150px]">
                           {msg.fileReference.path}
                         </span>
                         <span>:{msg.fileReference.line || 1}</span>
@@ -228,11 +225,10 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
 
         {/* Live Typing Indicator */}
         {typingNames.length > 0 && (
-          <div className="flex items-center gap-2 text-[10px] font-mono text-gold-400 italic px-2 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400 animate-bounce" />
+          <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-400 italic px-2 py-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-600 animate-pulse" />
             <span>
-              {typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'}{' '}
-              typing...
+              {typingNames.join(', ')} {typingNames.length === 1 ? 'is' : 'are'} typing...
             </span>
           </div>
         )}
@@ -243,11 +239,11 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
       {/* Message Input Footer */}
       <form
         onSubmit={handleSendMessage}
-        className="p-3 border-t border-editor-border bg-surface-400/80 space-y-1.5"
+        className="p-2.5 border-t border-slate-200/80 bg-white space-y-1.5"
       >
         {/* Attached reference banner */}
         {attachedRef && (
-          <div className="flex items-center justify-between px-2 py-1 rounded bg-gold-400/10 border border-gold-400/30 text-[10px] font-mono text-gold-300">
+          <div className="flex items-center justify-between px-2 py-1 rounded bg-blue-50 border border-blue-200 text-[10px] font-mono text-blue-700">
             <span className="flex items-center gap-1 truncate">
               <Paperclip className="h-3 w-3" />
               Attached: {attachedRef.path}:{attachedRef.line}
@@ -255,7 +251,7 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
             <button
               type="button"
               onClick={() => setAttachedRef(null)}
-              className="text-slate-400 hover:text-white"
+              className="text-slate-400 hover:text-slate-700"
             >
               ✕
             </button>
@@ -267,12 +263,12 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
             <button
               type="button"
               onClick={handleAttachActiveFile}
-              className={`p-1.5 rounded-lg border transition-all ${
+              className={`p-1.5 rounded-md border transition-all ${
                 attachedRef
-                  ? 'bg-gold-400/20 text-gold-300 border-gold-400/40'
-                  : 'bg-surface-200 text-slate-400 border-surface-50 hover:text-white'
+                  ? 'bg-blue-50 text-blue-700 border-blue-300'
+                  : 'bg-slate-50 text-slate-500 border-slate-200 hover:text-slate-800 hover:bg-slate-100'
               }`}
-              title="Attach current code location"
+              title="Attach active file reference"
             >
               <Code2 className="h-4 w-4" />
             </button>
@@ -282,14 +278,14 @@ export const WorkspaceChatPanel: React.FC<WorkspaceChatPanelProps> = ({
             type="text"
             value={inputText}
             onChange={handleInputChange}
-            placeholder="Type a message or share a link..."
-            className="flex-1 rounded-lg border border-surface-50 bg-surface-300 px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-gold-400 focus:outline-none"
+            placeholder="Type a message..."
+            className="flex-1 rounded-md border border-slate-200 bg-slate-50/80 px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:bg-white focus:outline-none"
           />
 
           <button
             type="submit"
             disabled={!inputText.trim()}
-            className="p-2 rounded-lg bg-gold-400 hover:bg-gold-300 text-background font-semibold transition-colors disabled:opacity-50"
+            className="p-1.5 rounded-md bg-slate-900 hover:bg-slate-800 text-white font-semibold transition-colors disabled:opacity-50"
           >
             <Send className="h-3.5 w-3.5" />
           </button>
