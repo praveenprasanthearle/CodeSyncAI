@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { IUser } from '../types';
-import { apiClient } from '../api/client';
+import { apiClient, refreshSession } from '../api/client';
+import { getAccessToken, setAccessToken, subscribeAccessToken } from '../api/session';
+import { useAiStore } from './aiStore';
+import { useCollaborationStore } from './collaborationStore';
+import { useFileStore } from './fileStore';
 
 interface AuthState {
   user: IUser | null;
@@ -17,32 +21,15 @@ interface AuthState {
   updateProfile: (data: { name?: string; avatarUrl?: string }) => Promise<void>;
 }
 
-const getStoredToken = (): string | null => {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      return localStorage.getItem('codesync_access_token');
-    }
-  } catch (_e) {
-    // Ignore storage error
-  }
-  return null;
-};
-
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: getStoredToken(),
+  token: getAccessToken(),
   isAuthenticated: false,
   isLoading: true,
   error: null,
 
   setAuth: (user, token) => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('codesync_access_token', token);
-      }
-    } catch (_e) {
-      // Ignore storage error
-    }
+    setAccessToken(token);
     set({
       user,
       token,
@@ -57,13 +44,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setError: (error) => set({ error }),
 
   clearAuth: () => {
-    try {
-      if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('codesync_access_token');
-      }
-    } catch (_e) {
-      // Ignore storage error
-    }
+    setAccessToken(null);
     set({
       user: null,
       token: null,
@@ -75,7 +56,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initAuth: async () => {
     set({ isLoading: true });
-    const storedToken = getStoredToken();
+    const storedToken = getAccessToken();
 
     try {
       if (storedToken) {
@@ -84,7 +65,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (response?.data?.user) {
           set({
             user: response.data.user,
-            token: storedToken,
+            token: getAccessToken(),
             isAuthenticated: true,
             isLoading: false,
           });
@@ -93,12 +74,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // Try refreshing session via HttpOnly cookie
-      const refreshResponse: any = await apiClient.post('/auth/refresh');
-      if (refreshResponse?.data?.accessToken && refreshResponse?.data?.user) {
-        localStorage.setItem('codesync_access_token', refreshResponse.data.accessToken);
+      const session = await refreshSession();
+      if (session.accessToken && session.user) {
         set({
-          user: refreshResponse.data.user,
-          token: refreshResponse.data.accessToken,
+          user: session.user,
+          token: session.accessToken,
           isAuthenticated: true,
           isLoading: false,
         });
@@ -130,3 +110,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
+
+subscribeAccessToken(token => {
+  if (token) useAuthStore.setState({ token });
+  else {
+    useAuthStore.setState({ user: null, token: null, isAuthenticated: false, isLoading: false, error: null });
+    useAiStore.getState().reset();
+    useCollaborationStore.getState().clearState();
+    useFileStore.getState().clearState();
+  }
+});

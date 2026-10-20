@@ -12,13 +12,13 @@ export const connectDatabase = async (): Promise<void> => {
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}/${conn.connection.name}`);
   } catch (error: any) {
-    console.warn(`⚠️ Local MongoDB (${env.DATABASE_URL}) not reachable: ${error.message}`);
+    console.warn('Configured MongoDB is unavailable.');
 
     if (env.NODE_ENV !== 'production') {
       try {
         console.log('⚡ Initializing embedded in-memory MongoDB database for development...');
         const { MongoMemoryServer } = await import('mongodb-memory-server');
-        memServerInstance = await MongoMemoryServer.create();
+        memServerInstance = await MongoMemoryServer.create({ instance: { args: process.platform === 'win32' ? [] : ['--nounixsocket'] } });
         const memUri = memServerInstance.getUri();
         await mongoose.connect(memUri);
         console.log(`✅ Embedded In-Memory MongoDB Connected at ${memUri}`);
@@ -28,9 +28,7 @@ export const connectDatabase = async (): Promise<void> => {
       }
     }
 
-    if (env.NODE_ENV === 'production') {
-      process.exit(1);
-    }
+    throw new Error('Database connection failed. Configure DATABASE_URL before starting the server.');
   }
 
   mongoose.connection.on('error', (err) => {

@@ -3,6 +3,14 @@ import { AiService } from '../services/ai.service';
 import { sendSuccess } from '../utils/response';
 
 export class AiController {
+  static status(_req: Request, res: Response): void {
+    sendSuccess(res, AiService.status());
+  }
+
+  static async checkConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try { sendSuccess(res, await AiService.checkConnection(req.body), 'AI provider connection verified'); }
+    catch (error) { next(error); }
+  }
   static async chat(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       const result = await AiService.chat(req.body);

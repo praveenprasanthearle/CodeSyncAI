@@ -1,3 +1,4 @@
+import { createTestDatabase } from './database';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -12,7 +13,7 @@ describe('Auth & Security System Integration Tests', () => {
 
   beforeAll(async () => {
     // Start in-memory MongoDB (allow ample time for first-time binary initialization)
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await createTestDatabase();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
   }, 120000);

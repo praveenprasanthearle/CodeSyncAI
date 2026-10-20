@@ -1,3 +1,4 @@
+import { createTestDatabase } from './database';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -17,7 +18,7 @@ describe('Virtual File System (VFS) Integration Tests', () => {
   let viewerToken: string;
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await createTestDatabase();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
   }, 120000);

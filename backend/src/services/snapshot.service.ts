@@ -4,6 +4,7 @@ import { FileNode } from '../models/FileNode';
 import { Project } from '../models/Project';
 import { AppError } from '../middleware/errorHandler';
 import { YjsDocManager } from '../sockets/yjsManager';
+import { SocketManager } from '../sockets';
 
 export class SnapshotService {
   /**
@@ -17,6 +18,8 @@ export class SnapshotService {
   ): Promise<ISnapshot> {
     const project = await Project.findById(projectId);
     if (!project) throw new AppError('Project not found', 404);
+
+    await YjsDocManager.getInstance().flushAll();
 
     // Fetch all files in the project
     const fileNodes = await FileNode.find({ projectId, type: 'file' });
@@ -59,26 +62,40 @@ export class SnapshotService {
   /**
    * Get single snapshot details by ID
    */
-  static async getSnapshotById(snapshotId: string): Promise<ISnapshot> {
+  static async getSnapshotById(snapshotId: string, userId: string): Promise<ISnapshot> {
     const snapshot = await Snapshot.findById(snapshotId).populate(
       'createdBy',
       'name username avatarUrl'
     );
     if (!snapshot) throw new AppError('Snapshot not found', 404);
+    const project = await Project.findById(snapshot.projectId);
+    if (!project?.hasAccess(userId, 'viewer')) throw new AppError('You cannot access this snapshot.', 403, 'FORBIDDEN');
     return snapshot;
   }
 
   /**
    * Restore project files to a historical snapshot state
    */
-  static async restoreSnapshot(snapshotId: string, _userId: string): Promise<{ restoredCount: number }> {
+  static async restoreSnapshot(snapshotId: string, userId: string): Promise<{ restoredCount: number }> {
     const snapshot = await Snapshot.findById(snapshotId);
     if (!snapshot) throw new AppError('Snapshot not found', 404);
+    const project = await Project.findById(snapshot.projectId);
+    if (!project?.hasAccess(userId, 'editor')) throw new AppError('Only project editors can restore snapshots.', 403, 'FORBIDDEN');
 
     const projectId = snapshot.projectId.toString();
 
-    // 1. Wipe current workspace files and folders
-    await FileNode.deleteMany({ projectId });
+    await YjsDocManager.getInstance().flushAll();
+    // Preserve IDs at matching paths so connected editors can receive the restore.
+    const expected = new Map<string, 'file' | 'folder'>();
+    for (const file of snapshot.files) {
+      expected.set(file.path, 'file');
+      const parts = file.path.split('/').filter(Boolean);
+      for (let index = 1; index < parts.length; index++) expected.set('/' + parts.slice(0, index).join('/'), 'folder');
+    }
+    const current = await FileNode.find({ projectId });
+    const removed = current.filter(node => expected.get(node.path) !== node.type);
+    await Promise.all(removed.map(node => YjsDocManager.getInstance().removeDoc(node.id)));
+    if (removed.length) await FileNode.deleteMany({ _id: { $in: removed.map(node => node._id) } });
 
     // 2. Re-create all snapshot files and necessary parent folders
     let restoredCount = 0;
@@ -111,22 +128,19 @@ export class SnapshotService {
       }
 
       // Create file node
-      const createdFile = await FileNode.create({
-        projectId: new Types.ObjectId(projectId),
-        name: snapFile.name,
-        type: 'file',
-        path: snapFile.path,
-        parentId: currentParentId,
-        content: snapFile.content,
-        language: snapFile.language,
-        size: Buffer.byteLength(snapFile.content, 'utf8'),
-      });
+      const createdFile = await FileNode.findOneAndUpdate(
+        { projectId, path: snapFile.path, type: 'file' },
+        { $set: { name: snapFile.name, parentId: currentParentId, content: snapFile.content, language: snapFile.language, size: Buffer.byteLength(snapFile.content, 'utf8'), lastModifiedBy: new Types.ObjectId(userId) } },
+        { upsert: true, new: true, runValidators: true }
+      );
 
       // Synchronize in-memory Yjs doc if active
       YjsDocManager.getInstance().setDocContent(createdFile.id, snapFile.content);
       restoredCount++;
     }
 
+    await Project.findByIdAndUpdate(projectId, { fileCount: restoredCount, lastActivityAt: new Date() });
+    SocketManager.notifyFilesChanged(projectId);
     return { restoredCount };
   }
 
@@ -141,7 +155,7 @@ export class SnapshotService {
     const isOwner = project?.owner.toString() === userId;
     const isCreator = snapshot.createdBy.toString() === userId;
 
-    if (!isOwner && !isCreator) {
+    if (!project?.hasAccess(userId, 'editor') || (!isOwner && !isCreator)) {
       throw new AppError('You do not have permission to delete this snapshot', 403);
     }
 

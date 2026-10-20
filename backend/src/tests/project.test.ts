@@ -1,3 +1,4 @@
+import { createTestDatabase } from './database';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -18,7 +19,7 @@ describe('Project Management & Collaboration Integration Tests', () => {
   let user3Id: string;
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await createTestDatabase();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
   }, 120000);

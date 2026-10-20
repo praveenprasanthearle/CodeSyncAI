@@ -1,138 +1,93 @@
+import { EventEmitter } from 'events';
 import * as Y from 'yjs';
 import { FileNode } from '../models/FileNode';
+import { AppError } from '../middleware/errorHandler';
 
-export class YjsDocManager {
+export class YjsDocManager extends EventEmitter {
   private static instance: YjsDocManager;
-  private docs: Map<string, Y.Doc> = new Map();
-  private dirtyTimers: Map<string, NodeJS.Timeout> = new Map();
-  private readonly PERSIST_DEBOUNCE_MS = 2500;
-
-  private constructor() {}
-
-  public static getInstance(): YjsDocManager {
-    if (!YjsDocManager.instance) {
-      YjsDocManager.instance = new YjsDocManager();
-    }
-    return YjsDocManager.instance;
+  private docs = new Map<string, Y.Doc>();
+  private loading = new Map<string, Promise<Y.Doc>>();
+  private dirtyTimers = new Map<string, NodeJS.Timeout>();
+  private writes = new Map<string, Promise<void>>();
+  private readonly PERSIST_DEBOUNCE_MS = 1000;
+  private constructor() { super(); }
+  static getInstance(): YjsDocManager {
+    if (!this.instance) this.instance = new YjsDocManager();
+    return this.instance;
   }
 
-  /**
-   * Get an existing in-memory Y.Doc or initialize one from MongoDB
-   */
-  public async getOrCreateDoc(fileId: string, initialContent?: string): Promise<Y.Doc> {
-    if (this.docs.has(fileId)) {
-      return this.docs.get(fileId)!;
-    }
-
-    let contentToSeed = initialContent;
-    if (contentToSeed === undefined) {
-      try {
-        const fileNode = await FileNode.findById(fileId);
-        contentToSeed = fileNode ? fileNode.content : '';
-      } catch (_err) {
-        contentToSeed = '';
-      }
-    }
-
-    const doc = new Y.Doc();
-    const yText = doc.getText('monaco');
-    if (contentToSeed) {
-      yText.insert(0, contentToSeed);
-    }
-
-    // Schedule debounced database persistence on local document mutations
-    doc.on('update', () => {
-      this.schedulePersistence(fileId);
-    });
-
-    this.docs.set(fileId, doc);
-    return doc;
+  /** One initialization promise per file prevents peers receiving different seed documents. */
+  async getOrCreateDoc(fileId: string, initialContent?: string): Promise<Y.Doc> {
+    const existing = this.docs.get(fileId);
+    if (existing) return existing;
+    const pending = this.loading.get(fileId);
+    if (pending) return pending;
+    const load = (async () => {
+      const file = await FileNode.findById(fileId);
+      if (!file || file.type !== 'file') throw new AppError('File not found.', 404, 'FILE_NOT_FOUND');
+      const doc = new Y.Doc();
+      const content = initialContent ?? file.content ?? '';
+      if (content) doc.getText('monaco').insert(0, content);
+      doc.on('update', () => this.schedulePersistence(fileId));
+      this.docs.set(fileId, doc);
+      return doc;
+    })();
+    this.loading.set(fileId, load);
+    try { return await load; } finally { this.loading.delete(fileId); }
   }
-
-  /**
-   * Apply an incoming binary update from a peer client
-   */
-  public async applyUpdate(fileId: string, update: Uint8Array): Promise<void> {
-    const doc = await this.getOrCreateDoc(fileId);
-    Y.applyUpdate(doc, update);
+  hasDoc(fileId: string): boolean { return this.docs.has(fileId); }
+  getTextContent(fileId: string): string { return this.docs.get(fileId)?.getText('monaco').toString() || ''; }
+  async applyUpdate(fileId: string, update: Uint8Array): Promise<void> {
+    Y.applyUpdate(await this.getOrCreateDoc(fileId), update, 'peer');
   }
+  async encodeFullState(fileId: string): Promise<Uint8Array> { return Y.encodeStateAsUpdate(await this.getOrCreateDoc(fileId)); }
 
-  /**
-   * Encode the full document state as a binary update
-   */
-  public async encodeFullState(fileId: string): Promise<Uint8Array> {
-    const doc = await this.getOrCreateDoc(fileId);
-    return Y.encodeStateAsUpdate(doc);
-  }
-
-  /**
-   * Get raw plain-text content from Y.Text('monaco')
-   */
-  public getTextContent(fileId: string): string {
+  /** Restore through the existing CRDT so connected peers receive the same deletions/inserts. */
+  setDocContent(fileId: string, content: string): void {
     const doc = this.docs.get(fileId);
-    if (!doc) return '';
-    return doc.getText('monaco').toString();
+    if (!doc || doc.getText('monaco').toString() === content) return;
+    doc.transact(() => {
+      const text = doc.getText('monaco'); text.delete(0, text.length); text.insert(0, content);
+    }, 'server-replace');
+    this.emit('replaced', { fileId, state: Buffer.from(Y.encodeStateAsUpdate(doc)).toString('base64') });
   }
-
-  /**
-   * Set or overwrite Y.Text content
-   */
-  public setDocContent(fileId: string, content: string): void {
-    if (this.docs.has(fileId)) {
-      const doc = this.docs.get(fileId)!;
-      const yText = doc.getText('monaco');
-      yText.delete(0, yText.length);
-      yText.insert(0, content);
-    }
-  }
-
-  /**
-   * Debounced persistence to MongoDB
-   */
   private schedulePersistence(fileId: string): void {
-    if (this.dirtyTimers.has(fileId)) {
-      clearTimeout(this.dirtyTimers.get(fileId)!);
-    }
-
-    const timer = setTimeout(async () => {
-      await this.persistDocToDatabase(fileId);
+    clearTimeout(this.dirtyTimers.get(fileId));
+    const timer = setTimeout(() => {
       this.dirtyTimers.delete(fileId);
+      void this.persistDocToDatabase(fileId).catch(() => this.emit('persistence_failed', { fileId }));
     }, this.PERSIST_DEBOUNCE_MS);
-
+    timer.unref();
     this.dirtyTimers.set(fileId, timer);
   }
-
-  /**
-   * Write Y.Text back to MongoDB FileNode
-   */
-  public async persistDocToDatabase(fileId: string): Promise<void> {
-    const doc = this.docs.get(fileId);
-    if (!doc) return;
-
-    try {
+  async persistDocToDatabase(fileId: string): Promise<void> {
+    const previous = this.writes.get(fileId) || Promise.resolve();
+    const write = previous.catch(() => {}).then(async () => {
+      const doc = this.docs.get(fileId);
+      if (!doc) return;
       const content = doc.getText('monaco').toString();
-      const size = Buffer.byteLength(content, 'utf8');
-
-      await FileNode.findByIdAndUpdate(fileId, {
-        content,
-        size,
-        updatedAt: new Date(),
-      });
-    } catch (err) {
-      console.error(`[YjsDocManager] Failed to persist file ${fileId}:`, err);
-    }
+      const updated = await FileNode.findByIdAndUpdate(fileId, { content, size: Buffer.byteLength(content, 'utf8') });
+      if (!updated) throw new AppError('This file was deleted while saving.', 404, 'FILE_NOT_FOUND');
+      this.emit('persisted', { fileId, content });
+    });
+    this.writes.set(fileId, write);
+    try { await write; } finally { if (this.writes.get(fileId) === write) this.writes.delete(fileId); }
   }
-
-  /**
-   * Flush all dirty docs immediately (e.g. before shutdown or in test tear-down)
-   */
-  public async flushAll(): Promise<void> {
-    const promises: Promise<void>[] = [];
-    for (const [fileId, timer] of this.dirtyTimers.entries()) {
-      clearTimeout(timer);
-      promises.push(this.persistDocToDatabase(fileId));
-    }
+  async flushAll(): Promise<void> {
+    const dirtyIds = Array.from(this.dirtyTimers.keys());
+    for (const timer of this.dirtyTimers.values()) clearTimeout(timer);
     this.dirtyTimers.clear();
-    await Promise.all(promises);
+    await Promise.all(dirtyIds.map(fileId => this.persistDocToDatabase(fileId)));
+    await Promise.all(this.writes.values());
+  }
+  async removeDoc(fileId: string): Promise<void> {
+    clearTimeout(this.dirtyTimers.get(fileId)); this.dirtyTimers.delete(fileId);
+    await this.writes.get(fileId)?.catch(() => {});
+    this.docs.get(fileId)?.destroy(); this.docs.delete(fileId);
+  }
+  async dispose(): Promise<void> {
+    await this.flushAll();
+    for (const doc of this.docs.values()) doc.destroy();
+    this.docs.clear();
   }
 }

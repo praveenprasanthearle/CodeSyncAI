@@ -6,9 +6,9 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { WorkspacePage } from './pages/WorkspacePage';
 import { useAuthStore } from './stores/authStore';
 import { Code2, Loader2 } from 'lucide-react';
+const WorkspacePage = React.lazy(() => import('./pages/WorkspacePage').then(module => ({ default: module.WorkspacePage })));
 
 // Protected Route Guard (Requires active authentication)
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -113,7 +113,7 @@ export const App: React.FC = () => {
             path="/workspace/:id"
             element={
               <ProtectedRoute>
-                <WorkspacePage />
+                <React.Suspense fallback={<div className="h-screen flex items-center justify-center text-sm text-slate-500">Loading workspace…</div>}><WorkspacePage /></React.Suspense>
               </ProtectedRoute>
             }
           />

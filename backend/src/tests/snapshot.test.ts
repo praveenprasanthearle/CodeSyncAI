@@ -1,3 +1,4 @@
+import { createTestDatabase } from './database';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
@@ -23,7 +24,7 @@ describe('Version Snapshots & Git Tooling Integration Tests', () => {
   let snapshotId: string;
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await createTestDatabase();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
 

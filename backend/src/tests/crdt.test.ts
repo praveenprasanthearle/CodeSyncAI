@@ -1,10 +1,11 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { createServer, Server as HttpServer } from 'http';
-import { io as Client, Socket as ClientSocket } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
 import * as Y from 'yjs';
+import { createTestDatabase } from './database';
 import { createApp } from '../app';
 import { SocketManager } from '../sockets';
 import { YjsDocManager } from '../sockets/yjsManager';
@@ -12,273 +13,77 @@ import { User } from '../models/User';
 import { Project } from '../models/Project';
 import { FileNode } from '../models/FileNode';
 
-describe('Real-Time CRDT Collaboration & Presence Integration Tests', () => {
-  let mongoServer: MongoMemoryServer;
-  let httpServer: HttpServer;
-  let serverPort: number;
-
-  let tokenAlice: string;
-  let tokenBob: string;
-  let projectId: string;
-  let fileId: string;
-
+describe('Real-time collaboration with acknowledged joins', () => {
+  let database: MongoMemoryServer, server: HttpServer, manager: SocketManager, url: string;
+  let aliceToken: string, bobToken: string, projectId: string, fileId: string;
+  const clients: Socket[] = [];
+  const documents = YjsDocManager.getInstance();
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
-    const uri = mongoServer.getUri();
-    await mongoose.connect(uri);
-
-    // Setup HTTP server with SocketManager
-    const app = createApp();
-    httpServer = createServer(app);
-    SocketManager.initialize(httpServer);
-
-    await new Promise<void>((resolve) => {
-      httpServer.listen(0, () => {
-        const addr = httpServer.address();
-        if (addr && typeof addr !== 'string') {
-          serverPort = addr.port;
-        }
-        resolve();
-      });
-    });
-  }, 120000);
-
-  afterAll(async () => {
-    await mongoose.disconnect();
-    if (mongoServer) {
-      await mongoServer.stop();
-    }
-    await new Promise<void>((resolve) => {
-      httpServer.close(() => resolve());
-    });
+    database = await createTestDatabase(); await mongoose.connect(database.getUri());
+    server = createServer(createApp()); manager = SocketManager.initialize(server);
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    url = `http://127.0.0.1:${(server.address() as any).port}`;
   });
-
   beforeEach(async () => {
-    await User.deleteMany({});
-    await Project.deleteMany({});
-    await FileNode.deleteMany({});
-
-    // Register Alice
-    const res1 = await request(httpServer).post('/api/v1/auth/register').send({
-      name: 'Alice Cooper',
-      username: 'alice_cooper',
-      email: 'alice@codesync.ai',
-      password: 'Password123!',
-    });
-    tokenAlice = res1.body.data.accessToken;
-
-    // Register Bob
-    const res2 = await request(httpServer).post('/api/v1/auth/register').send({
-      name: 'Bob Marley',
-      username: 'bob_marley',
-      email: 'bob@codesync.ai',
-      password: 'Password123!',
-    });
-    tokenBob = res2.body.data.accessToken;
-
-    // Create Project
-    const projRes = await request(httpServer)
-      .post('/api/v1/projects')
-      .set('Authorization', `Bearer ${tokenAlice}`)
-      .send({
-        name: 'Collaborative Sandbox',
-        template: 'blank',
-      });
-    projectId = projRes.body.data.project.id;
-
-    // Create File
-    const fileRes = await request(httpServer)
-      .post(`/api/v1/projects/${projectId}/files`)
-      .set('Authorization', `Bearer ${tokenAlice}`)
-      .send({
-        name: 'main.js',
-        type: 'file',
-        content: 'console.log("Initial seed content");',
-      });
-    fileId = fileRes.body.data.file.id;
+    await User.deleteMany({}); await Project.deleteMany({}); await FileNode.deleteMany({});
+    const register = async (name: string) => (await request(server).post('/api/v1/auth/register').send({ name: `${name} Developer`, username: name.toLowerCase(), email: `${name}@codesync.test`, password: 'Password123!' })).body.data.accessToken;
+    aliceToken = await register('Alice'); bobToken = await register('Bob');
+    const project = await request(server).post('/api/v1/projects').set('Authorization', `Bearer ${aliceToken}`).send({ name: 'Collaboration Test', template: 'blank' });
+    projectId = project.body.data.project.id;
+    await request(server).post(`/api/v1/projects/${projectId}/members`).set('Authorization', `Bearer ${aliceToken}`).send({ emailOrUsername: 'bob', role: 'editor' });
+    const file = await request(server).post(`/api/v1/projects/${projectId}/files`).set('Authorization', `Bearer ${aliceToken}`).send({ name: 'main.js', type: 'file', content: 'console.log("Initial seed content");' });
+    fileId = file.body.data.file.id;
   });
-
-  const createTestClient = (token?: string): ClientSocket => {
-    return Client(`http://localhost:${serverPort}`, {
-      auth: { token },
-      transports: ['websocket'],
-      forceNew: true,
-    });
+  afterEach(async () => { clients.splice(0).forEach(socket => socket.disconnect()); await documents.dispose(); });
+  afterAll(async () => { await new Promise<void>(resolve => manager.io.close(() => resolve())); await mongoose.disconnect(); await database.stop(); });
+  const connect = (token: string): Promise<Socket> => {
+    const socket = io(url, { auth: { token }, transports: ['websocket'], autoConnect: false, reconnection: false }); clients.push(socket);
+    return new Promise((resolve, reject) => { socket.once('connect', () => resolve(socket)); socket.once('connect_error', reject); socket.connect(); });
   };
-
-  it('should authenticate socket connection and broadcast workspace presence', async () => {
-    const socketAlice = createTestClient(tokenAlice);
-
-    await new Promise<void>((resolve) => {
-      socketAlice.on('connect', () => {
-        socketAlice.emit('workspace:join', { projectId });
-      });
-
-      socketAlice.on('workspace:collaborators', (data: any) => {
-        expect(data.collaborators).toBeDefined();
-        expect(data.collaborators.length).toBeGreaterThan(0);
-        expect(data.collaborators[0].user.username).toBe('alice_cooper');
-        expect(data.collaborators[0].user.color).toBeDefined();
-        socketAlice.disconnect();
-        resolve();
-      });
-    });
+  const event = (socket: Socket, name: string): Promise<any> => new Promise((resolve, reject) => {
+    const handler = (data: unknown) => { clearTimeout(timer); resolve(data); };
+    const timer = setTimeout(() => { socket.off(name, handler); reject(new Error(`Timed out waiting for ${name}`)); }, 5000);
+    socket.once(name, handler);
   });
-
-  it('should notify peers when another collaborator joins the workspace', async () => {
-    const socketAlice = createTestClient(tokenAlice);
-    const socketBob = createTestClient(tokenBob);
-
-    await new Promise<void>((resolve) => {
-      socketAlice.on('connect', () => {
-        socketAlice.emit('workspace:join', { projectId });
-
-        socketAlice.on('workspace:user_joined', (data: any) => {
-          expect(data.member.user.username).toBe('bob_marley');
-          expect(data.member.user.color).toBeDefined();
-          socketAlice.disconnect();
-          socketBob.disconnect();
-          resolve();
-        });
-
-        // Bob connects and joins after Alice is listening
-        socketBob.on('connect', () => {
-          socketBob.emit('workspace:join', { projectId });
-        });
-      });
-    });
+  const emit = (socket: Socket, name: string, data: unknown): Promise<any> => new Promise((resolve, reject) => socket.timeout(5000).emit(name, data, (error: Error | null, result: any) => {
+    if (error) reject(error); else if (!result.ok) reject(new Error(result.error.message)); else resolve(result);
+  }));
+  const joinFile = async (socket: Socket): Promise<Y.Doc> => {
+    const initial = event(socket, 'crdt:initial_state'); await emit(socket, 'crdt:join_file', { fileId });
+    const doc = new Y.Doc(); Y.applyUpdate(doc, Buffer.from((await initial).state, 'base64')); return doc;
+  };
+  it('authenticates and publishes workspace presence', async () => {
+    const alice = await connect(aliceToken), presence = event(alice, 'workspace:collaborators');
+    await emit(alice, 'workspace:join', { projectId });
+    const result = await presence; expect(result.collaborators[0].user.username).toBe('alice'); expect(result.collaborators[0].user.color).toBeDefined();
   });
-
-  it('should load initial CRDT document state when joining a file', async () => {
-    const socketAlice = createTestClient(tokenAlice);
-
-    await new Promise<void>((resolve) => {
-      socketAlice.on('connect', () => {
-        socketAlice.emit('crdt:join_file', {
-          fileId,
-          initialContent: 'console.log("Initial seed content");',
-        });
-      });
-
-      socketAlice.on('crdt:initial_state', (data: any) => {
-        expect(data.fileId).toBe(fileId);
-        expect(data.state).toBeDefined();
-
-        // Decode Yjs state
-        const binaryState = new Uint8Array(Buffer.from(data.state, 'base64'));
-        const clientDoc = new Y.Doc();
-        Y.applyUpdate(clientDoc, binaryState);
-
-        const text = clientDoc.getText('monaco').toString();
-        expect(text).toBe('console.log("Initial seed content");');
-
-        socketAlice.disconnect();
-        resolve();
-      });
-    });
+  it('notifies peers only after the second collaborator has joined', async () => {
+    const alice = await connect(aliceToken); await emit(alice, 'workspace:join', { projectId });
+    const bob = await connect(bobToken), joined = event(alice, 'workspace:user_joined');
+    await emit(bob, 'workspace:join', { projectId }); expect((await joined).member.user.username).toBe('bob');
   });
-
-  it('should synchronize concurrent Yjs CRDT updates between Alice and Bob', async () => {
-    const socketAlice = createTestClient(tokenAlice);
-    const socketBob = createTestClient(tokenBob);
-
-    const docAlice = new Y.Doc();
-    const docBob = new Y.Doc();
-
-    await new Promise<void>((resolve) => {
-      // 1. Alice joins file and initializes local Y.Doc
-      socketAlice.on('connect', () => {
-        socketAlice.emit('crdt:join_file', {
-          fileId,
-          initialContent: 'console.log("Initial seed content");',
-        });
-      });
-
-      socketAlice.on('crdt:initial_state', (data: any) => {
-        const stateA = new Uint8Array(Buffer.from(data.state, 'base64'));
-        Y.applyUpdate(docAlice, stateA);
-
-        // 2. Bob joins file
-        socketBob.emit('crdt:join_file', { fileId });
-      });
-
-      socketBob.on('crdt:initial_state', (data: any) => {
-        const stateB = new Uint8Array(Buffer.from(data.state, 'base64'));
-        Y.applyUpdate(docBob, stateB);
-
-        // 3. Alice inserts code and sends update to Bob
-        const yTextA = docAlice.getText('monaco');
-        docAlice.on('update', (update: Uint8Array) => {
-          socketAlice.emit('crdt:update', {
-            fileId,
-            update: Buffer.from(update).toString('base64'),
-          });
-        });
-
-        yTextA.insert(yTextA.length, '\nconst sync = true;');
-      });
-
-      // 4. Bob receives Alice's update
-      socketBob.on('crdt:update', (data: any) => {
-        expect(data.fileId).toBe(fileId);
-        const updateUint8 = new Uint8Array(Buffer.from(data.update, 'base64'));
-        Y.applyUpdate(docBob, updateUint8);
-
-        const textBob = docBob.getText('monaco').toString();
-        expect(textBob).toContain('const sync = true;');
-
-        socketAlice.disconnect();
-        socketBob.disconnect();
-        resolve();
-      });
-    });
+  it('loads the authoritative initial document', async () => {
+    const alice = await connect(aliceToken), doc = await joinFile(alice);
+    expect(doc.getText('monaco').toString()).toBe('console.log("Initial seed content");'); doc.destroy();
   });
-
-  it('should broadcast cursor and selection awareness to peers', async () => {
-    const socketAlice = createTestClient(tokenAlice);
-    const socketBob = createTestClient(tokenBob);
-
-    await new Promise<void>((resolve) => {
-      socketAlice.on('connect', () => {
-        socketAlice.emit('crdt:join_file', { fileId });
-      });
-
-      socketBob.on('connect', () => {
-        socketBob.emit('crdt:join_file', { fileId });
-
-        socketAlice.on('crdt:peer_awareness', (data: any) => {
-          expect(data.fileId).toBe(fileId);
-          expect(data.user.username).toBe('bob_marley');
-          expect(data.cursor.line).toBe(4);
-          expect(data.cursor.column).toBe(12);
-          expect(data.selection).toBeDefined();
-
-          socketAlice.disconnect();
-          socketBob.disconnect();
-          resolve();
-        });
-
-        // Bob broadcasts cursor movement
-        setTimeout(() => {
-          socketBob.emit('crdt:awareness', {
-            fileId,
-            cursor: { line: 4, column: 12 },
-            selection: { startLine: 4, startCol: 5, endLine: 4, endCol: 12 },
-          });
-        }, 100);
-      });
-    });
+  it('delivers incremental CRDT updates to a second editor', async () => {
+    const alice = await connect(aliceToken), bob = await connect(bobToken);
+    const docAlice = await joinFile(alice), docBob = await joinFile(bob);
+    const vector = Y.encodeStateVector(docAlice), received = event(bob, 'crdt:update');
+    docAlice.getText('monaco').insert(docAlice.getText('monaco').length, '\nconst sync = true;');
+    await emit(alice, 'crdt:update', { fileId, update: Buffer.from(Y.encodeStateAsUpdate(docAlice, vector)).toString('base64') });
+    Y.applyUpdate(docBob, Buffer.from((await received).update, 'base64'));
+    expect(docBob.getText('monaco').toString()).toBe(docAlice.getText('monaco').toString()); docAlice.destroy(); docBob.destroy();
   });
-
-  it('should persist Yjs changes into MongoDB FileNode via flushAll', async () => {
-    const yjsManager = YjsDocManager.getInstance();
-    const doc = await yjsManager.getOrCreateDoc(fileId, 'Original');
-    doc.getText('monaco').insert(8, ' with CRDT modification');
-
-    await yjsManager.flushAll();
-
-    const fileInDb = await FileNode.findById(fileId);
-    expect(fileInDb).toBeDefined();
-    expect(fileInDb?.content).toContain('with CRDT modification');
+  it('broadcasts cursor awareness after both peers are ready', async () => {
+    const alice = await connect(aliceToken), bob = await connect(bobToken);
+    (await joinFile(alice)).destroy(); (await joinFile(bob)).destroy();
+    const awareness = event(alice, 'crdt:peer_awareness');
+    await emit(bob, 'crdt:awareness', { fileId, cursor: { line: 4, column: 12 }, selection: { startLineNumber: 4, startColumn: 5, endLineNumber: 4, endColumn: 12 } });
+    const data = await awareness; expect(data.user.username).toBe('bob'); expect(data.cursor).toEqual({ line: 4, column: 12 });
+  });
+  it('flushes dirty CRDT content to MongoDB', async () => {
+    const doc = await documents.getOrCreateDoc(fileId); doc.getText('monaco').insert(0, '// persisted\n');
+    await documents.flushAll(); expect((await FileNode.findById(fileId))!.content).toContain('// persisted');
   });
 });

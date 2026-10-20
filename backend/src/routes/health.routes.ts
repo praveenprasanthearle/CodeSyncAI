@@ -1,12 +1,16 @@
 import { Router, Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { sendSuccess } from '../utils/response';
+import { sendSuccess, sendError } from '../utils/response';
 
 const router = Router();
 
 router.get('/', (_req: Request, res: Response) => {
   const dbStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
   const memoryUsage = process.memoryUsage();
+  if (dbStatus !== 'connected') {
+    sendError(res, 'Database unavailable', 503, 'DATABASE_UNAVAILABLE');
+    return;
+  }
 
   sendSuccess(res, {
     status: 'healthy',

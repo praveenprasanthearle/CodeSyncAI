@@ -42,7 +42,7 @@ export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
 export const setRefreshTokenCookie = (res: Response, token: string): void => {
   res.cookie(REFRESH_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
+    secure: env.COOKIE_SECURE ?? env.NODE_ENV === 'production',
     sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
     maxAge: REFRESH_COOKIE_MAX_AGE,
     path: '/',
@@ -52,7 +52,7 @@ export const setRefreshTokenCookie = (res: Response, token: string): void => {
 export const clearRefreshTokenCookie = (res: Response): void => {
   res.clearCookie(REFRESH_COOKIE_NAME, {
     httpOnly: true,
-    secure: env.NODE_ENV === 'production',
+    secure: env.COOKIE_SECURE ?? env.NODE_ENV === 'production',
     sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
     path: '/',
   });

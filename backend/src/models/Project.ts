@@ -125,14 +125,15 @@ projectSchema.index({ 'members.user': 1 });
 projectSchema.index({ owner: 1, updatedAt: -1 });
 
 // Helper methods
+const referenceId = (value: any): string => String(value?._id || value);
 projectSchema.methods.isOwner = function (userId: string | Types.ObjectId): boolean {
-  return this.owner.toString() === userId.toString();
+  return referenceId(this.owner) === userId.toString();
 };
 
 projectSchema.methods.getMemberRole = function (userId: string | Types.ObjectId): ProjectRole | null {
   if (this.isOwner(userId)) return 'owner';
   const member = this.members.find(
-    (m: IProjectMember) => m.user.toString() === userId.toString()
+    (m: IProjectMember) => referenceId(m.user) === userId.toString()
   );
   return member ? member.role : null;
 };

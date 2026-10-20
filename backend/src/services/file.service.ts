@@ -3,6 +3,10 @@ import { Project } from '../models/Project';
 import { AppError } from '../middleware/errorHandler';
 import { CreateFileNodeInput, RenameNodeInput } from '../validations/file.validation';
 import mongoose from 'mongoose';
+import { YjsDocManager } from '../sockets/yjsManager';
+import { SocketManager } from '../sockets';
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export interface FileTreeNode {
   id: string;
@@ -165,6 +169,7 @@ export class FileService {
       });
     }
 
+    SocketManager.notifyFilesChanged(projectId);
     return node.toJSON();
   }
 
@@ -185,6 +190,11 @@ export class FileService {
 
     if (file.type === 'folder') {
       throw new AppError('Cannot write content directly to a directory node', 400, 'CANNOT_WRITE_FOLDER');
+    }
+
+    const documents = YjsDocManager.getInstance();
+    if (documents.hasDoc(fileId) && documents.getTextContent(fileId) !== content) {
+      throw new AppError('This file has newer collaborative edits. Synchronize it before saving.', 409, 'EDIT_CONFLICT');
     }
 
     file.content = content;
@@ -276,11 +286,11 @@ export class FileService {
     if (node.type === 'folder' && newPath !== oldPath) {
       const descendants = await FileNode.find({
         projectId: node.projectId,
-        path: new RegExp(`^${oldPath}/`),
+        path: new RegExp(`^${escapeRegExp(oldPath)}/`),
       });
 
       for (const desc of descendants) {
-        desc.path = desc.path.replace(new RegExp(`^${oldPath}/`), `${newPath}/`);
+        desc.path = newPath + desc.path.slice(oldPath.length);
         await desc.save();
       }
     }
@@ -289,6 +299,7 @@ export class FileService {
       lastActivityAt: new Date(),
     });
 
+    SocketManager.notifyFilesChanged(node.projectId.toString());
     return node.toJSON();
   }
 
@@ -307,17 +318,19 @@ export class FileService {
       // Find all descendant children
       const descendants = await FileNode.find({
         projectId: node.projectId,
-        path: new RegExp(`^${node.path}/`),
+        path: new RegExp(`^${escapeRegExp(node.path)}/`),
       });
 
       deletedFiles = descendants.filter((d) => d.type === 'file').length;
+      await Promise.all(descendants.map(desc => YjsDocManager.getInstance().removeDoc(desc.id)));
       await FileNode.deleteMany({
         projectId: node.projectId,
-        path: new RegExp(`^${node.path}/`),
+        path: new RegExp(`^${escapeRegExp(node.path)}/`),
       });
       await FileNode.findByIdAndDelete(node._id);
     } else {
       deletedFiles = 1;
+      await YjsDocManager.getInstance().removeDoc(fileId);
       await FileNode.findByIdAndDelete(node._id);
     }
 
@@ -329,6 +342,7 @@ export class FileService {
       });
     }
 
+    SocketManager.notifyFilesChanged(node.projectId.toString());
     return { deletedCount: deletedFiles };
   }
 }
