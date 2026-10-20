@@ -35,6 +35,33 @@ describe('Real AI provider contract and failure handling', () => {
     expect(response.status).toBe(503); expect(response.body.error.code).toBe('AI_NOT_CONFIGURED');
     expect(response.body.data).toBeUndefined(); expect(fetchMock).not.toHaveBeenCalled();
   });
+  it('identifies the real-provider contract even before a key is configured', async () => {
+    env.GEMINI_API_KEY = undefined;
+    const response = await request(app).get('/api/v1/ai/status').set('Authorization', `Bearer ${token}`);
+    expect(response.body.data).toMatchObject({ contractVersion: 1, configured: false, provider: 'gemini' });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it.each([
+    ['Hello!', 'Hello! How can I help?'],
+    ['Explain photosynthesis in simple English.', 'Plants use sunlight to make food.'],
+    ['Write a polite leave application.', 'Dear Sir, I request leave for tomorrow.'],
+    ['Write a JavaScript function that adds two numbers.', '```javascript\nfunction add(a, b) { return a + b; }\n```'],
+  ])('forwards the actual request without replacing it with a coding task: %s', async (message, reply) => {
+    fetchMock.mockResolvedValue(geminiResponse(reply));
+    const response = await post('chat', { message });
+    expect(response.body.data).toMatchObject({ contractVersion: 1, reply, provider: 'gemini' });
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.contents.at(-1).parts[0].text).toBe(message);
+    expect(body.generationConfig.responseMimeType).toBeUndefined();
+  });
+  it('keeps the user question authoritative when an unrelated source file is attached', async () => {
+    fetchMock.mockResolvedValue(geminiResponse('Dear Professor, may I request an extension?'));
+    const message = 'Write a polite email to my professor.';
+    await post('chat', { message, activeFile: { name: 'main.c', path: '/main.c', language: 'c', content: '#include <stdio.h>\nint main() { return 0; }' } });
+    const text = JSON.parse(fetchMock.mock.calls[0][1].body).contents.at(-1).parts[0].text;
+    expect(text).toContain('<editor_context');
+    expect(text.endsWith('Current user request:\n' + message)).toBe(true);
+  });
   it('answers non-code questions using the provider and sends conversation history', async () => {
     fetchMock.mockResolvedValue(geminiResponse('Dear Professor, may I request an extension?'));
     const response = await post('chat', { message: 'Write that email politely.', history: [{ role: 'user', content: 'I need a deadline extension.' }, { role: 'assistant', content: 'Who is the recipient?' }] });

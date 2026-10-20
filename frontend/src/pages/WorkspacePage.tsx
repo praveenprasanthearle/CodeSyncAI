@@ -89,6 +89,7 @@ export const WorkspacePage: React.FC = () => {
     isLoading: isAiLoading,
     activeModel,
     connectionState,
+    serviceError,
     loadStatus,
     setConversation,
     cancelRequest,
@@ -123,7 +124,7 @@ export const WorkspacePage: React.FC = () => {
     language: '',
   });
   const [aiPrompt, setAiPrompt] = useState('');
-  const [includeEditorContext, setIncludeEditorContext] = useState(true);
+  const [includeEditorContext, setIncludeEditorContext] = useState(false);
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
   const [appliedSnippetId, setAppliedSnippetId] = useState<string | null>(null);
 
@@ -582,6 +583,8 @@ export const WorkspacePage: React.FC = () => {
                   </button>
                 </div>
 
+                {serviceError && <p role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-100 p-2 rounded-lg shrink-0">{serviceError}</p>}
+
                 {/* AI Quick Action Chips */}
                 <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono shrink-0">
                   <button
@@ -632,6 +635,8 @@ export const WorkspacePage: React.FC = () => {
                   {aiMessages.map((msg) => (
                     <div
                       key={msg.id}
+                      data-ai-sender={msg.sender}
+                      data-ai-status={msg.status}
                       className={`p-3 rounded-xl leading-relaxed space-y-2 font-sans ${
                         msg.sender === 'ai'
                           ? 'bg-white border border-slate-200 text-slate-800 shadow-xs'

@@ -22,7 +22,7 @@ Native code execution needs the corresponding toolchain installed on the server:
 
 ## AI assistant
 
-The assistant supports general text questions, learning, writing, planning, programming, and follow-up conversation. Active-file and selected-code context can be attached when useful.
+The assistant supports general text questions, learning, writing, planning, programming, and follow-up conversation. General chat is the default. Enable **Include active file and selection** when a question needs your code; the Explain, Refactor, Fix bugs and Tests buttons explicitly use the open file. A source file does not replace the user's question.
 
 Connect a provider through **AI Settings → Gemini or OpenAI → Verify and save key**, or configure a server key in `backend/.env`:
 
@@ -60,7 +60,13 @@ To verify a configured server key with actual general conversation and follow-up
 npm run check:ai
 ```
 
-Provider quota and billing apply to live requests.
+This live check covers greetings, an email, follow-up recall, JavaScript generation and switching back from coding to an ordinary question. It prints sample answers for human review. Provider quota and billing apply to live requests.
+
+### If every question returns a random program
+
+That behavior comes from the legacy `codesync-neural-core` template fallback, not from a successful Gemini/OpenAI response. Installing a key does not update a running backend. Stop **both** development servers, pull the latest code, run `npm ci` and `npm run setup`, and restart with `npm run dev`. If you run compiled backend output, rebuild it first with `npm run build:backend`.
+
+The current frontend checks the backend's AI contract before sending a provider key. An older server produces an update/restart error rather than showing template code as an answer. The backend never substitutes local templates when a provider fails. Check the actual provider/model shown in AI Settings after verifying your key.
 
 ## Collaboration and permissions
 
@@ -102,7 +108,7 @@ npm run test:e2e
 
 Unit/integration tests cover authentication, project/file permissions, provider contracts, document persistence, snapshots, native execution and frontend state. AI provider contract tests use controlled HTTP responses; they do not establish live answer quality.
 
-The browser smoke test starts its own servers and disposable database. It verifies registration, project creation, Monaco editing, native C execution, concurrent edits from two accounts, team chat, snapshot capture/restore, refresh-cookie recovery and AI configuration/error UX. It deliberately disables live provider keys. It writes screenshots and a result summary under `test-results/demo-smoke`.
+The browser smoke test starts its own servers and disposable database. It verifies registration, project creation, Monaco editing, native C execution, concurrent edits from two accounts, team chat, snapshot capture/restore, refresh-cookie recovery and AI configuration/error UX. A test-only provider fixture also verifies general chat, writing, follow-up recall, coding, topic changes, opt-in editor context and stale-backend detection through the real browser and backend. It deliberately disables live provider keys; fixture responses do not establish live answer quality. It writes screenshots and a result summary under `test-results/demo-smoke`.
 
 GitHub Actions is configured to run tests, builds and browser checks. See [the demo audit and interview notes](docs/demo-audit.md) for measured results and remaining operational requirements.
 

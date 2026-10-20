@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -13,14 +13,15 @@ const frontendRequire = createRequire(new URL('../frontend/package.json', import
 const vite = path.join(path.dirname(frontendRequire.resolve('vite/package.json')), 'bin/vite.js');
 const backendPort = 5055, frontendPort = 5175;
 const base = `http://127.0.0.1:${frontendPort}`;
-const artifacts = process.env.CODESYNC_QA_DIR || path.join(root, 'test-results/demo-smoke');
+const artifacts = path.resolve(process.env.CODESYNC_QA_DIR || path.join(root, 'test-results/demo-smoke'));
+const providerTrace = path.join(artifacts, 'ai-provider-requests.jsonl');
 const secret = randomBytes(32).toString('hex');
 const children = [], browsers = [], pages = [], pageErrors = [], checks = [];
 let serverLog = '';
 await mkdir(artifacts, { recursive: true });
 
-function start(script, args, cwd, env) {
-  const child = spawn(process.execPath, [script, ...args], { cwd, env: { ...process.env, ...env }, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
+function start(script, args, cwd, env, nodeArgs = []) {
+  const child = spawn(process.execPath, [...nodeArgs, script, ...args], { cwd, env: { ...process.env, ...env }, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] });
   children.push(child);
   for (const stream of [child.stdout, child.stderr]) stream.on('data', chunk => { serverLog = (serverLog + chunk.toString()).slice(-12000); });
   return child;
@@ -81,7 +82,8 @@ async function pollFile(page, id, predicate) {
 
 try {
   // Force an isolated disposable DB and no live provider calls, regardless of developer .env.
-  start(path.join(root, 'backend/dist/server.js'), [], path.join(root, 'backend'), { NODE_ENV: 'test', PORT: String(backendPort), HOST: '127.0.0.1', DATABASE_URL: 'mongodb://127.0.0.1:1/codesync_e2e', JWT_ACCESS_SECRET: secret, JWT_REFRESH_SECRET: randomBytes(32).toString('hex'), GEMINI_API_KEY: '', OPENAI_API_KEY: '', EXECUTION_MODE: 'local', COOKIE_SECURE: 'false' });
+  await writeFile(providerTrace, '');
+  start(path.join(root, 'backend/dist/server.js'), [], path.join(root, 'backend'), { NODE_ENV: 'test', PORT: String(backendPort), HOST: '127.0.0.1', DATABASE_URL: 'mongodb://127.0.0.1:1/codesync_e2e', JWT_ACCESS_SECRET: secret, JWT_REFRESH_SECRET: randomBytes(32).toString('hex'), GEMINI_API_KEY: '', OPENAI_API_KEY: '', EXECUTION_MODE: 'local', COOKIE_SECURE: 'false', CODESYNC_TEST_AI_LOG: providerTrace }, ['--require', path.join(root, 'scripts/test-support/ai-provider-fixture.cjs')]);
   start(vite, ['--host', '127.0.0.1', '--port', String(frontendPort), '--strictPort'], path.join(root, 'frontend'), { BACKEND_URL: `http://127.0.0.1:${backendPort}` });
   await waitForServer(`http://127.0.0.1:${backendPort}/api/v1/health`); await waitForServer(base);
   const owner = await newPage(); await register(owner, 'owner'); pass('registration and dashboard');
@@ -137,6 +139,9 @@ try {
   const refreshed = await owner.evaluate(() => localStorage.getItem('codesync_access_token'));
   assert.notEqual(refreshed, expired); assert.ok(owner.url().includes('/workspace/')); pass('expired access token recovers through the refresh cookie');
 
+  // Reload clears open tabs. Reopen the file so general chat is tested beside real code.
+  await owner.getByText('main.c', { exact: true }).first().click();
+  await owner.locator('[data-editor-ready="true"]').waitFor({ timeout: 120000 });
   await owner.getByTitle('AI Assistant', { exact: true }).click();
   await owner.getByRole('textbox', { name: 'Message CodeSync AI' }).fill('Write a polite email to my professor.');
   await owner.getByRole('button', { name: 'Send AI message' }).click();
@@ -147,7 +152,65 @@ try {
   assert.equal(await owner.getByRole('button', { name: 'Verify and save key' }).isDisabled(), true);
   await owner.getByRole('button', { name: 'Close AI Settings' }).click();
   pass('AI configuration and missing-key errors are honest and actionable');
+
+  async function connectProvider(provider) {
+    await owner.getByTitle('AI Engine Settings').click();
+    await owner.getByLabel('AI provider').selectOption(provider);
+    await owner.getByLabel('Provider API key', { exact: true }).fill(`codesync-demo-${provider}-fixture-key`);
+    await owner.getByRole('button', { name: 'Verify and save key' }).click();
+    await owner.getByRole('dialog', { name: 'AI Settings' }).waitFor({ state: 'hidden' });
+  }
+  async function chat(message, visibleAnswer) {
+    const responseReady = owner.waitForResponse(response => response.url().endsWith('/ai/chat') && response.request().method() === 'POST');
+    await owner.getByRole('textbox', { name: 'Message CodeSync AI' }).fill(message);
+    await owner.getByRole('button', { name: 'Send AI message' }).click();
+    const response = await responseReady;
+    const result = await response.json();
+    assert.equal(response.ok(), true, JSON.stringify(result));
+    assert.equal(result.data.contractVersion, 1);
+    await owner.waitForFunction(answer => [...document.querySelectorAll('[data-ai-sender="ai"][data-ai-status="complete"]')].at(-1)?.textContent.includes(answer), visibleAnswer);
+    return response.request().postDataJSON();
+  }
+  await owner.getByTitle('Clear AI conversation').click();
+  const attachContext = owner.getByRole('checkbox', { name: 'Include active file and selection' });
+  assert.equal(await attachContext.isChecked(), false);
+  await connectProvider('gemini');
+  const greeting = await chat('Hello!', 'How can I help you today?');
+  assert.equal(greeting.activeFile, undefined);
+  await chat('Explain photosynthesis in simple English.', 'Plants use sunlight');
+  await chat('Write a polite email to my professor.', 'Dear Professor');
+  await chat('My notebook color is indigo. Remember it.', 'notebook is indigo');
+  await chat('What color is my notebook?', 'Your notebook is indigo');
+  pass('Gemini fixture: general questions, writing and follow-up recall through the real UI/backend');
+
+  await connectProvider('openai');
+  await chat('Write a JavaScript function that adds two numbers.', 'return a + b');
+  const changedTopic = await chat('Write a birthday wish for my friend.', 'Happy birthday!');
+  assert.equal(changedTopic.activeFile, undefined);
+  assert.equal(changedTopic.provider, 'openai');
+  pass('OpenAI fixture: coding and a switch back to ordinary conversation');
+
+  await attachContext.check();
+  const coding = await chat('What does the open C file print?', 'prints DEMO_RUN_42');
+  assert.equal(coding.activeFile.content, merged.content);
+  const explanation = owner.waitForResponse(response => response.url().endsWith('/ai/explain') && response.request().method() === 'POST');
+  await owner.getByRole('button', { name: 'Explain', exact: true }).click();
+  assert.equal((await (await explanation).json()).data.timeComplexity, 'O(1)');
+  await owner.getByText('The program prints DEMO_RUN_42 and exits successfully.', { exact: true }).waitFor();
+  const trace = (await readFile(providerTrace, 'utf8')).trim().split('\n').map(line => JSON.parse(line));
+  assert.ok(trace.some(item => item.provider === 'gemini' && item.messages.at(-1).content === 'What color is my notebook?' && item.messages.some(message => message.content.includes('color is indigo'))));
+  assert.ok(trace.some(item => item.provider === 'openai' && item.messages.at(-1).content.endsWith('Current user request:\nWhat does the open C file print?')));
+  pass('Editor context is opt-in and structured code explanation uses the selected provider');
   await owner.screenshot({ path: path.join(artifacts, 'workspace.png'), fullPage: true });
+
+  let chatPosts = 0;
+  owner.on('request', request => { if (request.url().endsWith('/ai/chat') && request.method() === 'POST') chatPosts++; });
+  await owner.route('**/api/v1/ai/status', route => route.fulfill({ json: { success: true, data: { configured: true, model: 'codesync-neural-core' } } }));
+  await owner.getByRole('textbox', { name: 'Message CodeSync AI' }).fill('Tell me about stars.');
+  await owner.getByRole('button', { name: 'Send AI message' }).click();
+  await owner.getByRole('alert').filter({ hasText: 'backend is out of date' }).waitFor();
+  assert.equal(chatPosts, 0);
+  pass('A stale backend is detected before it receives a provider key or returns template code');
   assert.deepEqual(pageErrors, [], 'Browser runtime errors');
   await writeFile(path.join(artifacts, 'results.json'), JSON.stringify({ checks, pageErrors, liveAiTested: false, dockerTested: false }, null, 2));
   console.log(`PASS: ${checks.length} browser workflows; no browser runtime errors.`);

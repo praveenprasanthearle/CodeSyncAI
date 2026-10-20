@@ -18,9 +18,9 @@ The original TypeScript/production build passed. After adapting MongoDB to use T
 
 Final validation is recorded after the clean dependency installation:
 
-- Automated tests: **137 total** — 105 backend and 32 frontend.
+- Automated tests after the chat follow-up fix: **148 total** — 111 backend and 37 frontend.
 - TypeScript and Vite production build.
-- Eight browser workflow checks with two separate browser sessions and no page runtime errors.
+- Twelve browser workflow checks, including the AI follow-up regressions, with two separate browser sessions and no page runtime errors.
 - Production dependency audit: **zero reported vulnerabilities** after the clean root-lockfile installation. This is a dependency advisory check, not a claim that the application has no security defects.
 
 The browser test performs:
@@ -56,6 +56,14 @@ The full development dependency audit still reports 11 advisories (3 moderate, 6
 ### “Why did the previous assistant return unrelated code?”
 
 “It substituted keyword templates whenever the provider was absent or failed. That hid configuration failures behind HTTP success. I removed that fallback. Missing keys, invalid credentials, quota exhaustion, unavailable models, timeouts and malformed output now have distinct errors.”
+
+### “Why could installing an API key still show the old behavior?”
+
+“A key only configures the running application. The old default branch and an already-running old backend could still serve the template engine while the fix was on a separate draft branch. I added a versioned AI response contract and check it before sending a key. The client rejects legacy responses, identifies the outdated server, and tells the operator to update and restart both servers. General chat also leaves editor context off by default, and attached code is explicitly reference data rather than the task.”
+
+The follow-up reproduction ran the original master service with controlled provider failures: “Hello!” and “Write a polite leave application” returned C programs labeled `codesync-neural-core`, while a photosynthesis question returned analysis of an empty C module. No live provider calls were made during this reproduction.
+
+The follow-up browser regression uses a test-only provider fixture to exercise greetings, general explanations, email writing, history recall, JavaScript generation, a topic change after coding, opt-in file context and the Explain action through the UI/backend. It then simulates an old server and verifies that no chat POST or provider key is sent to it. The fixture is only loaded by the test subprocess and is not imported by application code.
 
 ### “How does simultaneous editing avoid lost updates?”
 

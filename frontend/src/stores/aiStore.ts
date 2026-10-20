@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiClient } from '../api/client';
+import { ApiError, apiClient } from '../api/client';
 import { IFileNode } from '../types';
 
 export type AiProvider = 'auto' | 'gemini' | 'openai';
@@ -13,6 +13,7 @@ interface AiState {
   messages: AiMessage[]; isLoading: boolean; activeAction: Action | null;
   apiKey: string | null; provider: AiProvider; activeModel: string;
   connectionState: 'unconfigured' | 'configured' | 'connected' | 'error';
+  serviceError: string | null;
   conversationId: string | null; conversations: Record<string, AiMessage[]>;
   configure: (provider: AiProvider, key: string | null) => void;
   checkConnection: (provider: AiProvider, key: string | null) => Promise<void>;
@@ -41,6 +42,23 @@ const extractCode = (text: string) => {
   const match = text.match(/```([\w+#.-]*)\s*\n([\s\S]*?)```/);
   return match ? { language: match[1] || undefined, codeSnippet: match[2].trim() } : {};
 };
+const OUTDATED_SERVER = 'Your CodeSync backend is out of date. Pull the latest changes and restart both the backend and frontend. The old AI engine returns code templates instead of real answers.';
+const assertCompatible = (data: any) => {
+  if (data?.contractVersion !== 1) throw new Error(OUTDATED_SERVER);
+  if (!['gemini', 'openai'].includes(data.provider) || typeof data.model !== 'string' || !data.model.trim()) {
+    throw new Error('The AI server returned invalid provider information. Restart the backend and retry.');
+  }
+};
+const backendStatus = async (signal?: AbortSignal) => {
+  try {
+    const response: any = await apiClient.get('/ai/status', { signal });
+    assertCompatible(response?.data);
+    return response.data;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) throw new Error(OUTDATED_SERVER);
+    throw error;
+  }
+};
 
 /** Only successful exchanges enter the provider's context; welcome/errors never do. */
 export const buildAiHistory = (messages: AiMessage[]) => {
@@ -64,17 +82,20 @@ const perform = async (request: RequestSpec) => {
   const userId = id();
   useAiStore.setState({ isLoading: true, activeAction: request.action, messages: [...state.messages, { id: userId, sender: 'user', text: request.text, contextText: request.contextText, status: 'pending', timestamp: timestamp() }] });
   try {
+    // Check the connected server before sending a user's key to an older AI engine.
+    await backendStatus(controller.signal);
+    if (requestId !== generation) return;
     const response: any = await apiClient.post(`/ai/${({ fix: 'fix-error', tests: 'generate-tests' } as Record<string, string>)[request.action] || request.action}`, {
       ...request.payload, provider: state.provider, apiKey: state.apiKey || undefined,
     }, { signal: controller.signal, timeout: 65000 });
     if (requestId !== generation) return;
     const data = response?.data;
-    if (!data?.model) throw new Error('The AI service returned an invalid response. Please retry.');
+    assertCompatible(data);
     const text = request.format(data);
     if (!text?.trim()) throw new Error('The AI service returned no answer. Please retry.');
     useAiStore.setState(current => ({
       messages: [...current.messages.map(m => m.id === userId ? { ...m, status: 'complete' as const } : m), { id: id(), sender: 'ai', text, status: 'complete', model: data.model, truncated: data.truncated, timestamp: timestamp(), ...extractCode(text) }],
-      activeModel: data.model, connectionState: 'connected',
+      activeModel: data.model, connectionState: 'connected', serviceError: null,
     }));
   } catch (error: any) {
     if (requestId !== generation) return;
@@ -82,6 +103,7 @@ const perform = async (request: RequestSpec) => {
     useAiStore.setState(current => ({
       messages: [...current.messages.map(m => m.id === userId ? { ...m, status: 'error' as const } : m), { id: id(), sender: 'ai', text: cancelled ? 'Request cancelled.' : error.message || 'Unable to reach the AI service. Please retry.', status: 'error', timestamp: timestamp() }],
       connectionState: cancelled ? current.connectionState : 'error',
+      serviceError: cancelled ? current.serviceError : error.message === OUTDATED_SERVER ? OUTDATED_SERVER : null,
     }));
   } finally {
     if (requestId === generation) { controller = null; useAiStore.setState({ isLoading: false, activeAction: null }); }
@@ -90,7 +112,7 @@ const perform = async (request: RequestSpec) => {
 
 export const useAiStore = create<AiState>((set, get) => ({
   messages: [welcome()], isLoading: false, activeAction: null,
-  ...storedConfiguration(), activeModel: '', connectionState: 'unconfigured', conversationId: null, conversations: {},
+  ...storedConfiguration(), activeModel: '', connectionState: 'unconfigured', serviceError: null, conversationId: null, conversations: {},
   configure: (provider, apiKey) => {
     const clean = apiKey?.trim() || null;
     try {
@@ -98,20 +120,22 @@ export const useAiStore = create<AiState>((set, get) => ({
       if (clean) sessionStorage.setItem('codesync_ai_provider', JSON.stringify({ provider, apiKey: clean }));
       else sessionStorage.removeItem('codesync_ai_provider');
     } catch { /* Keep configuration in memory when storage is unavailable. */ }
-    set({ provider: clean ? provider : 'auto', apiKey: clean, activeModel: '', connectionState: clean ? 'configured' : 'unconfigured' });
+    set({ provider: clean ? provider : 'auto', apiKey: clean, activeModel: '', connectionState: clean ? 'configured' : 'unconfigured', serviceError: null });
   },
   checkConnection: async (provider, apiKey) => {
+    await backendStatus();
     const response: any = await apiClient.post('/ai/check', { provider, apiKey: apiKey?.trim() || undefined }, { timeout: 65000 });
+    assertCompatible(response?.data);
     if (!response?.data?.verified) throw new Error('The AI connection could not be verified.');
     get().configure(provider, apiKey);
     set({ activeModel: response.data.model, connectionState: 'connected' });
   },
   loadStatus: async () => {
-    if (get().apiKey) { set({ connectionState: 'configured' }); return; }
     try {
-      const response: any = await apiClient.get('/ai/status');
-      if (!get().apiKey) set({ activeModel: response.data.model, connectionState: response.data.configured ? 'configured' : 'unconfigured' });
-    } catch { set({ connectionState: 'error' }); }
+      const status = await backendStatus();
+      if (!get().apiKey) set({ activeModel: status.model, connectionState: status.configured ? 'configured' : 'unconfigured', serviceError: null });
+      else set({ connectionState: get().connectionState === 'connected' ? 'connected' : 'configured', serviceError: null });
+    } catch (error: any) { set({ connectionState: 'error', serviceError: error.message || 'Unable to reach the AI server.' }); }
   },
   setConversation: conversationId => {
     if (conversationId === get().conversationId) return;
@@ -125,7 +149,9 @@ export const useAiStore = create<AiState>((set, get) => ({
     const payload: Record<string, unknown> = { message: message.trim(), history: buildAiHistory(get().messages) };
     if (activeFile) payload.activeFile = { name: activeFile.name, path: activeFile.path, language: activeFile.language || 'plaintext', content: activeFile.content || '' };
     if (selectedCode) payload.selectedCode = selectedCode;
-    await perform({ action: 'chat', text: message.trim(), payload, format: data => data.reply });
+    const context = [activeFile ? `Attached file ${activeFile.path}:\n${activeFile.content || ''}` : '', selectedCode ? `Selected code:\n${selectedCode}` : ''].filter(Boolean).join('\n\n');
+    const contextText = context ? `${message.trim()}\n\nEditor context (reference data):\n${context}`.slice(0, 16000) : undefined;
+    await perform({ action: 'chat', text: message.trim(), contextText, payload, format: data => data.reply });
   },
   explainCode: async (code, language = 'javascript') => {
     if (!code.trim()) return;
