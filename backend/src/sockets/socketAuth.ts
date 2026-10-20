@@ -15,7 +15,10 @@ export interface AuthenticatedSocket extends Socket {
   data: {
     user?: CollaboratorUser;
     projectId?: string;
-    activeFileId?: string;
+    activeFileId?: string | null;
+    voiceProjectId?: string;
+    fileProjects?: Record<string, string>;
+    accessTokenExpiresAt?: number;
   };
 }
 
@@ -49,20 +52,10 @@ export const socketAuthMiddleware = async (
       socket.handshake.headers?.authorization?.replace(/^Bearer\s+/i, '');
 
     if (!token) {
-      // Allow anonymous guest fallback with guest ID if not authenticated, or reject
-      const guestId = `guest_${socket.id.substring(0, 5)}`;
-      socket.data.user = {
-        userId: guestId,
-        username: `Guest-${socket.id.substring(0, 4)}`,
-        email: `${guestId}@codesync.local`,
-        name: `Guest Developer`,
-        avatarUrl: `https://api.dicebear.com/7.x/bottts/svg?seed=${guestId}`,
-        color: getRandomColor(guestId),
-      };
-      return next();
+      return next(new Error('AUTHENTICATION_REQUIRED'));
     }
 
-    const payload = verifyAccessToken(token) as AccessTokenPayload;
+    const payload = verifyAccessToken(token) as AccessTokenPayload & { exp?: number };
     if (!payload || !payload.userId) {
       return next(new Error('AUTHENTICATION_FAILED'));
     }
@@ -80,6 +73,7 @@ export const socketAuthMiddleware = async (
       avatarUrl: userDoc.avatarUrl || `https://api.dicebear.com/7.x/bottts/svg?seed=${userDoc.username}`,
       color: getRandomColor(userDoc.username),
     };
+    socket.data.accessTokenExpiresAt = payload.exp ? payload.exp * 1000 : undefined;
 
     next();
   } catch (err: any) {

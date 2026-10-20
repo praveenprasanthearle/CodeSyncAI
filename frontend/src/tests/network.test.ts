@@ -10,8 +10,8 @@ describe('Network URL Resolver Utility', () => {
 
   it('should fallback to localhost when window is undefined', () => {
     (globalThis as any).window = undefined;
-    expect(getApiBaseUrl()).toBe('http://localhost:5000/api/v1');
-    expect(getSocketUrl()).toBe('http://localhost:5000');
+    expect(getApiBaseUrl()).toBe('/api/v1');
+    expect(getSocketUrl()).toBe('http://localhost:5173');
   });
 
   it('should derive backend URLs from browser hostname when on LAN IP', () => {
@@ -23,8 +23,8 @@ describe('Network URL Resolver Utility', () => {
       },
     };
 
-    expect(getApiBaseUrl()).toBe('http://192.168.1.105:5000/api/v1');
-    expect(getSocketUrl()).toBe('http://192.168.1.105:5000');
+    expect(getApiBaseUrl()).toBe('/api/v1');
+    expect(getSocketUrl()).toBe('http://192.168.1.105:5173');
   });
 
   it('should derive localhost URLs when running on localhost', () => {
@@ -36,7 +36,7 @@ describe('Network URL Resolver Utility', () => {
       },
     };
 
-    expect(getApiBaseUrl()).toBe('http://localhost:5000/api/v1');
-    expect(getSocketUrl()).toBe('http://localhost:5000');
+    expect(getApiBaseUrl()).toBe('/api/v1');
+    expect(getSocketUrl()).toBe('http://localhost:5173');
   });
 });

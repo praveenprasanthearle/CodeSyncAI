@@ -7,9 +7,16 @@ import {
   aiRefactorSchema,
   aiFixErrorSchema,
   aiGenerateTestsSchema,
+  aiConnectionSchema,
 } from '../validations/ai.validation';
+import { requireAuth } from '../middleware/auth';
+import { aiRateLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
+router.use('/ai', requireAuth);
+router.get('/ai/status', AiController.status);
+router.use('/ai', aiRateLimiter);
+router.post('/ai/check', validateRequest(aiConnectionSchema), AiController.checkConnection);
 
 router.post('/ai/chat', validateRequest(aiChatSchema), AiController.chat);
 router.post('/ai/explain', validateRequest(aiExplainSchema), AiController.explain);

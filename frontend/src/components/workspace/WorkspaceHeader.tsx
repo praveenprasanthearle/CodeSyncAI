@@ -130,7 +130,7 @@ export const WorkspaceHeader: React.FC<WorkspaceHeaderProps> = ({
         {/* Save Button */}
         {dirtyFileIds.length > 0 && (
           <button
-            onClick={saveAllDirtyFiles}
+            onClick={() => { void saveAllDirtyFiles().catch(() => {}); }}
             disabled={isSaving}
             className="inline-flex items-center gap-1 rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-2.5 py-1 text-xs font-medium transition-all"
             title="Save changes (Ctrl+S)"

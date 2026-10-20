@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import Editor, { OnMount } from '@monaco-editor/react';
+import { MonacoBinding } from 'y-monaco';
+import '../monacoSetup';
 import {
   Bot,
   Send,
@@ -19,6 +21,8 @@ import {
   Boxes,
   Key,
   Play,
+  Square,
+  RotateCcw,
 } from 'lucide-react';
 import { useProjectStore } from '../stores/projectStore';
 import { useFileStore } from '../stores/fileStore';
@@ -26,6 +30,7 @@ import { useCollaborationStore } from '../stores/collaborationStore';
 import { useChatStore } from '../stores/chatStore';
 import { useExecutionStore } from '../stores/executionStore';
 import { useAiStore } from '../stores/aiStore';
+import { useAuthStore } from '../stores/authStore';
 import { useExtensionStore } from '../stores/extensionStore';
 import { WorkspaceHeader } from '../components/workspace/WorkspaceHeader';
 import { WorkspaceFooter } from '../components/workspace/WorkspaceFooter';
@@ -42,9 +47,13 @@ import { GeminiApiKeyModal } from '../components/workspace/GeminiApiKeyModal';
 import { updateRemoteCursorDecorations } from '../utils/monacoDecorations';
 import { IFileNode, IExtension } from '../types';
 
+const AiMessageContent = React.lazy(() => import('../components/workspace/AiMessageContent').then(module => ({ default: module.AiMessageContent })));
+
 export const WorkspacePage: React.FC = () => {
   const { id: projectId } = useParams<{ id: string }>();
   const { currentProject, getProject } = useProjectStore();
+  const user = useAuthStore(state => state.user);
+  const canEdit = currentProject?.owner.id === user?.id || currentProject?.userRole === 'editor' || currentProject?.userRole === 'owner';
   const {
     fileTree,
     activeFileId,
@@ -52,6 +61,8 @@ export const WorkspacePage: React.FC = () => {
     fetchProjectFiles,
     openFile,
     updateLocalContent,
+    updateRemoteContent,
+    error: fileError,
     saveFile,
     saveAllDirtyFiles,
   } = useFileStore();
@@ -65,6 +76,10 @@ export const WorkspacePage: React.FC = () => {
     leaveFileCRDT,
     broadcastCursor,
     sendContentChange,
+    yDoc,
+    currentFileId: collabFileId,
+    isDocumentReady,
+    error: collaborationError,
   } = useCollaborationStore();
 
   const { unreadCount } = useChatStore();
@@ -72,7 +87,13 @@ export const WorkspacePage: React.FC = () => {
   const {
     messages: aiMessages,
     isLoading: isAiLoading,
-    geminiApiKey,
+    activeModel,
+    connectionState,
+    serviceError,
+    loadStatus,
+    setConversation,
+    cancelRequest,
+    retryLastRequest,
     sendMessage: sendAiMessage,
     explainCode,
     refactorCode,
@@ -103,13 +124,20 @@ export const WorkspacePage: React.FC = () => {
     language: '',
   });
   const [aiPrompt, setAiPrompt] = useState('');
+  const [includeEditorContext, setIncludeEditorContext] = useState(false);
   const [copiedSnippetId, setCopiedSnippetId] = useState<string | null>(null);
   const [appliedSnippetId, setAppliedSnippetId] = useState<string | null>(null);
 
   const editorRef = useRef<any>(null);
+  const [editorInstance, setEditorInstance] = useState<any>(null);
+  const [boundFileId, setBoundFileId] = useState<string | null>(null);
   const decorationsRef = useRef<string[]>([]);
   const currentSelectionRef = useRef<any>(null);
   const aiMessagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (projectId && user?.id) { setConversation(`${user.id}:${projectId}`); void loadStatus(); }
+  }, [projectId, user?.id, setConversation, loadStatus]);
 
   // Load project details and files
   useEffect(() => {
@@ -130,14 +158,23 @@ export const WorkspacePage: React.FC = () => {
     if (activeFileId && projectId) {
       updateActiveFilePresence(projectId, activeFileId);
       joinFileCRDT(activeFileId, fileContents[activeFileId] || '', (newContent) => {
-        updateLocalContent(activeFileId, newContent);
+        updateRemoteContent(activeFileId, newContent);
       });
 
       return () => {
         leaveFileCRDT(activeFileId);
       };
     }
-  }, [activeFileId, projectId, updateActiveFilePresence, joinFileCRDT, leaveFileCRDT, updateLocalContent]);
+  }, [activeFileId, projectId, updateActiveFilePresence, joinFileCRDT, leaveFileCRDT, updateRemoteContent]);
+
+  useEffect(() => {
+    if (!editorInstance || !yDoc || !isDocumentReady || collabFileId !== activeFileId) return;
+    const model = editorInstance.getModel();
+    if (!model) return;
+    const binding = new MonacoBinding(yDoc.getText('monaco'), model, new Set([editorInstance]));
+    setBoundFileId(activeFileId);
+    return () => { binding.destroy(); setBoundFileId(null); };
+  }, [editorInstance, yDoc, isDocumentReady, collabFileId, activeFileId]);
 
   // Update Monaco decorations whenever peer cursors change
   useEffect(() => {
@@ -153,6 +190,7 @@ export const WorkspacePage: React.FC = () => {
   // Global Keyboard Shortcuts (Ctrl+S / Cmd+S, Ctrl+Enter to Run)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         if (activeFileId) {
@@ -227,6 +265,7 @@ export const WorkspacePage: React.FC = () => {
   // Monaco Editor Mount
   const handleEditorMount: OnMount = (editor, _monaco) => {
     editorRef.current = editor;
+    setEditorInstance(editor);
 
     // Track cursor position
     editor.onDidChangeCursorPosition((e) => {
@@ -255,13 +294,6 @@ export const WorkspacePage: React.FC = () => {
         broadcastCursor(activeFileId, cursorPosition, sel);
       }
     });
-  };
-
-  const handleEditorChange = (value: string | undefined) => {
-    if (activeFileId && value !== undefined) {
-      updateLocalContent(activeFileId, value);
-      sendContentChange(activeFileId, value);
-    }
   };
 
   const handleRunCode = async (overrideLang?: string) => {
@@ -312,7 +344,7 @@ export const WorkspacePage: React.FC = () => {
 
   const handleSendAi = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!aiPrompt.trim()) return;
+    if (!aiPrompt.trim() || isAiLoading) return;
 
     const userText = aiPrompt.trim();
     setAiPrompt('');
@@ -326,7 +358,7 @@ export const WorkspacePage: React.FC = () => {
       }
     }
 
-    const currentFilePayload = activeFile
+    const currentFilePayload = includeEditorContext && activeFile
       ? {
           name: activeFile.name,
           path: activeFile.path,
@@ -335,12 +367,13 @@ export const WorkspacePage: React.FC = () => {
         }
       : null;
 
-    await sendAiMessage(userText, currentFilePayload as any, selectedText || undefined);
+    await sendAiMessage(userText, currentFilePayload as any, includeEditorContext ? selectedText || undefined : undefined);
   };
 
   const handleApplyCodeToEditor = (snippet: string, msgId: string) => {
-    if (activeFileId && snippet) {
+    if (canEdit && activeFileId && snippet) {
       updateLocalContent(activeFileId, snippet);
+      sendContentChange(activeFileId, snippet);
       setAppliedSnippetId(msgId);
       setTimeout(() => setAppliedSnippetId(null), 2000);
     }
@@ -360,7 +393,7 @@ export const WorkspacePage: React.FC = () => {
         activeFileId={activeFileId}
         onOpenInviteModal={() => setIsInviteOpen(true)}
         onOpenHistory={() => setIsHistoryDrawerOpen(true)}
-        onOpenSnapshot={() => setIsSnapshotModalOpen(true)}
+        onOpenSnapshot={canEdit ? () => setIsSnapshotModalOpen(true) : undefined}
         onToggleAiPanel={() => {
           setIsRightPanelOpen(true);
           setActiveSideTab('ai');
@@ -374,6 +407,7 @@ export const WorkspacePage: React.FC = () => {
         onRunCode={() => handleRunCode()}
         isRunningCode={isRunning}
       />
+      {(collaborationError || fileError) && <div role="alert" className="px-4 py-2 bg-amber-50 text-amber-900 text-xs border-b border-amber-200">{collaborationError || fileError}</div>}
 
       {/* Main Workspace Body */}
       <div className="flex-1 flex overflow-hidden">
@@ -388,16 +422,18 @@ export const WorkspacePage: React.FC = () => {
           <EditorTabs files={fileTree} />
 
           {/* Monaco Editor Container */}
-          <div className="flex-1 overflow-hidden relative">
+          <div data-editor-ready={canEdit && isDocumentReady && boundFileId === activeFileId ? 'true' : 'false'} className="flex-1 overflow-hidden relative">
             {activeFile ? (
               <Editor
+                key={activeFileId}
+                path={`file:///${activeFileId}`}
                 height="100%"
                 language={activeLanguage}
                 theme="vs"
-                value={activeContent}
-                onChange={handleEditorChange}
+                defaultValue={activeContent}
                 onMount={handleEditorMount}
                 options={{
+                  readOnly: !canEdit || !isDocumentReady || collabFileId !== activeFileId || boundFileId !== activeFileId,
                   fontSize: 13,
                   fontFamily: 'JetBrains Mono, Fira Code, monospace',
                   minimap: { enabled: true },
@@ -435,7 +471,7 @@ export const WorkspacePage: React.FC = () => {
                 setActiveSideTab('ai');
               }}
               className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-slate-100 transition-colors"
-              title="Open Gemini AI Assistant"
+              title="Open AI Assistant"
             >
               <Bot className="h-4 w-4" />
             </button>
@@ -482,7 +518,7 @@ export const WorkspacePage: React.FC = () => {
                   }`}
                 >
                   <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-                  <span className="hidden sm:inline">Gemini AI</span>
+                  <span className="hidden sm:inline">AI Assistant</span>
                 </button>
 
                 <button
@@ -531,9 +567,9 @@ export const WorkspacePage: React.FC = () => {
                 {/* Engine Status & AI Settings */}
                 <div className="flex items-center justify-between px-2.5 py-1.5 rounded-lg bg-slate-50 border border-slate-200/80 text-[11px] font-mono shrink-0">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${connectionState === 'connected' ? 'bg-emerald-500' : 'bg-amber-400'}`} />
                     <span className="text-slate-700 font-semibold truncate text-[11px]">
-                      {geminiApiKey ? 'Gemini 2.0 • Active' : 'CodeSync AI • Active'}
+                      {connectionState === 'unconfigured' ? 'Connect an AI provider' : connectionState === 'error' ? 'AI needs attention' : `${activeModel || 'AI provider'} · ${connectionState}`}
                     </span>
                   </div>
 
@@ -546,6 +582,8 @@ export const WorkspacePage: React.FC = () => {
                     <span>Settings</span>
                   </button>
                 </div>
+
+                {serviceError && <p role="alert" className="text-xs text-rose-700 bg-rose-50 border border-rose-100 p-2 rounded-lg shrink-0">{serviceError}</p>}
 
                 {/* AI Quick Action Chips */}
                 <div className="grid grid-cols-2 gap-1.5 text-[11px] font-mono shrink-0">
@@ -597,6 +635,8 @@ export const WorkspacePage: React.FC = () => {
                   {aiMessages.map((msg) => (
                     <div
                       key={msg.id}
+                      data-ai-sender={msg.sender}
+                      data-ai-status={msg.status}
                       className={`p-3 rounded-xl leading-relaxed space-y-2 font-sans ${
                         msg.sender === 'ai'
                           ? 'bg-white border border-slate-200 text-slate-800 shadow-xs'
@@ -608,7 +648,7 @@ export const WorkspacePage: React.FC = () => {
                           {msg.sender === 'ai' ? (
                             <>
                               <Bot className="h-3.5 w-3.5 text-blue-600" />{' '}
-                              <span className="text-slate-700">{msg.model?.includes('gemini') ? 'Gemini 2.0' : 'CodeSync AI'}</span>
+                              <span className="text-slate-700">{msg.model || 'CodeSync AI'}</span>
                             </>
                           ) : (
                             <span className="text-blue-700">👤 You</span>
@@ -617,9 +657,13 @@ export const WorkspacePage: React.FC = () => {
                         <span>{msg.timestamp}</span>
                       </div>
 
-                      <div className="whitespace-pre-wrap leading-relaxed text-xs">
-                        {msg.text}
-                      </div>
+                      <React.Suspense fallback={<div className="whitespace-pre-wrap text-xs">{msg.text}</div>}>
+                        {msg.sender === 'ai' && msg.status !== 'error' ? <AiMessageContent text={msg.text} /> : <div className={`whitespace-pre-wrap text-xs ${msg.status === 'error' ? 'text-rose-700' : ''}`}>{msg.text}</div>}
+                      </React.Suspense>
+                      {msg.truncated && <p className="text-[10px] text-amber-700">Response reached the length limit. Ask the assistant to continue.</p>}
+                      {msg.sender === 'ai' && msg.status === 'error' && aiMessages[aiMessages.length - 1].id === msg.id && (
+                        <button disabled={isAiLoading} onClick={() => void retryLastRequest()} className="inline-flex items-center gap-1 text-blue-700 text-[11px]"><RotateCcw className="h-3 w-3" />Retry request</button>
+                      )}
 
                       {/* Code Snippet Block with Apply, Run & Copy Actions */}
                       {msg.codeSnippet && (
@@ -650,7 +694,7 @@ export const WorkspacePage: React.FC = () => {
                                 <span>Run</span>
                               </button>
 
-                              {activeFileId && (
+                              {activeFileId && canEdit && (
                                 <button
                                   onClick={() =>
                                     handleApplyCodeToEditor(msg.codeSnippet!, msg.id)
@@ -670,9 +714,6 @@ export const WorkspacePage: React.FC = () => {
                             </div>
                           </div>
 
-                          <pre className="overflow-x-auto text-slate-200 custom-scrollbar max-h-48 text-[10px]">
-                            {msg.codeSnippet}
-                          </pre>
                         </div>
                       )}
                     </div>
@@ -688,21 +729,28 @@ export const WorkspacePage: React.FC = () => {
                   <div ref={aiMessagesEndRef} />
                 </div>
 
+                <label className="text-[10px] text-slate-500 flex gap-1.5 items-center"><input type="checkbox" checked={includeEditorContext} onChange={e => setIncludeEditorContext(e.target.checked)} />Include active file and selection</label>
                 {/* AI Prompt Input Bar */}
                 <form
                   onSubmit={handleSendAi}
                   className="flex items-center gap-1.5 pt-2 border-t border-slate-100"
                 >
-                  <input
-                    type="text"
+                  <textarea
+                    aria-label="Message CodeSync AI"
+                    rows={2}
+                    maxLength={8000}
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="Ask AI a question or request code..."
-                    className="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!isAiLoading) e.currentTarget.form?.requestSubmit(); } }}
+                    placeholder="Ask anything… Shift+Enter for a new line"
+                    className="flex-1 min-w-0 resize-none rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:outline-none"
                   />
+
+                  {isAiLoading && <button type="button" aria-label="Stop AI response" onClick={cancelRequest} className="p-2 rounded-lg text-rose-600 hover:bg-rose-50"><Square className="h-3.5 w-3.5" /></button>}
 
                   <button
                     type="submit"
+                    aria-label="Send AI message"
                     disabled={!aiPrompt.trim() || isAiLoading}
                     className="p-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white transition-colors disabled:opacity-50"
                   >

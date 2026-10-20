@@ -1,529 +1,148 @@
-import { spawn } from 'child_process';
+import { spawn, execFile } from 'child_process';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import * as os from 'os';
 import { randomUUID } from 'crypto';
+import ts from 'typescript';
+import { env } from '../config/env';
+import { AppError } from '../middleware/errorHandler';
 import { ExecuteCodeInput } from '../validations/execution.validation';
 
 export interface ExecutionResult {
   status: 'success' | 'error' | 'timeout';
-  stdout: string;
-  stderr: string;
-  executionTimeMs: number;
-  exitCode: number | null;
-  language: string;
+  stdout: string; stderr: string; executionTimeMs: number;
+  exitCode: number | null; language: string;
 }
-
 export interface SupportedLanguageInfo {
-  id: string;
-  name: string;
-  version: string;
-  fileExtension: string;
-  timeoutLimitMs: number;
-  isDefault?: boolean;
-  isBuiltIn?: boolean;
-  requiresExtension?: boolean;
-  extensionId?: string;
-  extensionName?: string;
+  id: string; name: string; version: string; fileExtension: string;
+  timeoutLimitMs: number; isDefault?: boolean; isBuiltIn?: boolean;
+  requiresExtension?: boolean; extensionId?: string; extensionName?: string;
 }
+type Runtime = { file: string; command: string; args: string[]; compile?: [string, string[]] };
+const runtimes: Record<string, Runtime> = {
+  c: { file: 'solution.c', command: './solution', args: [], compile: ['gcc', ['-std=c17', '-O2', 'solution.c', '-o', 'solution']] },
+  cpp: { file: 'solution.cpp', command: './solution', args: [], compile: ['g++', ['-std=c++20', '-O2', 'solution.cpp', '-o', 'solution']] },
+  javascript: { file: 'solution.cjs', command: process.execPath, args: ['solution.cjs'] },
+  typescript: { file: 'solution.cjs', command: process.execPath, args: ['solution.cjs'] },
+  python: { file: 'solution.py', command: process.platform === 'win32' ? 'python' : 'python3', args: ['-u', 'solution.py'] },
+  go: { file: 'solution.go', command: 'go', args: ['run', 'solution.go'] },
+  rust: { file: 'solution.rs', command: './solution', args: [], compile: ['rustc', ['solution.rs', '-o', 'solution']] },
+  java: { file: 'Main.java', command: 'java', args: ['-Xmx128m', 'Main.java'] },
+};
 
 export class ExecutionService {
-  private static readonly MAX_OUTPUT_BYTES = 64 * 1024; // 64 KB
+  private static readonly MAX_OUTPUT_BYTES = 64 * 1024;
+  private static running = 0;
 
-  /**
-   * Get supported execution languages and sandbox limits
-   * Default compilers: C & C++ (Built-in)
-   * Other runtimes: Managed via Extensions
-   */
   static getSupportedLanguages(): SupportedLanguageInfo[] {
-    return [
-      {
-        id: 'c',
-        name: 'C (GCC / Clang)',
-        version: 'C17 / Standard C (GCC 13.2+)',
-        fileExtension: '.c',
-        timeoutLimitMs: 10000,
-        isDefault: true,
-        isBuiltIn: true,
-        requiresExtension: false,
-      },
-      {
-        id: 'cpp',
-        name: 'C++ (G++ / Clang)',
-        version: 'C++20 (GCC 13.2+ / Clang 18)',
-        fileExtension: '.cpp',
-        timeoutLimitMs: 10000,
-        isDefault: true,
-        isBuiltIn: true,
-        requiresExtension: false,
-      },
-      {
-        id: 'python',
-        name: 'Python',
-        version: '3.11+',
-        fileExtension: '.py',
-        timeoutLimitMs: 10000,
-        isDefault: false,
-        isBuiltIn: false,
-        requiresExtension: true,
-        extensionId: 'python',
-        extensionName: 'Python Language Pack & Runtime',
-      },
-      {
-        id: 'javascript',
-        name: 'Node.js / JavaScript',
-        version: 'v20.x V8',
-        fileExtension: '.js',
-        timeoutLimitMs: 10000,
-        isDefault: false,
-        isBuiltIn: false,
-        requiresExtension: true,
-        extensionId: 'javascript',
-        extensionName: 'Node.js & JavaScript Runtime',
-      },
-      {
-        id: 'typescript',
-        name: 'TypeScript',
-        version: 'v5.x TSC',
-        fileExtension: '.ts',
-        timeoutLimitMs: 10000,
-        isDefault: false,
-        isBuiltIn: false,
-        requiresExtension: true,
-        extensionId: 'typescript',
-        extensionName: 'TypeScript Toolchain & Checker',
-      },
-      {
-        id: 'go',
-        name: 'Go',
-        version: '1.22+',
-        fileExtension: '.go',
-        timeoutLimitMs: 10000,
-        isDefault: false,
-        isBuiltIn: false,
-        requiresExtension: true,
-        extensionId: 'go',
-        extensionName: 'Go Toolchain & Compiler',
-      },
-      {
-        id: 'rust',
-        name: 'Rust (Cargo / Rustc)',
-        version: '1.75+',
-        fileExtension: '.rs',
-        timeoutLimitMs: 10000,
-        isDefault: false,
-        isBuiltIn: false,
-        requiresExtension: true,
-        extensionId: 'rust',
-        extensionName: 'Rust Toolchain & Cargo',
-      },
-      {
-        id: 'java',
-        name: 'Java (OpenJDK)',
-        version: 'OpenJDK 21',
-        fileExtension: '.java',
-        timeoutLimitMs: 10000,
-        isDefault: false,
-        isBuiltIn: false,
-        requiresExtension: true,
-        extensionId: 'java',
-        extensionName: 'Java Development Kit (JDK 21)',
-      },
-    ];
+    return Object.entries(runtimes).map(([id, runtime]) => ({
+      id, name: ({ c: 'C', cpp: 'C++', javascript: 'JavaScript', typescript: 'TypeScript', python: 'Python', go: 'Go', rust: 'Rust', java: 'Java' } as Record<string, string>)[id],
+      version: 'Server toolchain', fileExtension: id === 'typescript' ? '.ts' : path.extname(runtime.file),
+      timeoutLimitMs: env.SANDBOX_TIMEOUT_MS,
+      isDefault: id === 'c' || id === 'cpp', isBuiltIn: id === 'c' || id === 'cpp',
+      requiresExtension: id !== 'c' && id !== 'cpp', extensionId: id,
+    }));
   }
 
-  /**
-   * Execute code in an isolated temporary sandbox directory
-   */
   static async executeCode(input: ExecuteCodeInput): Promise<ExecutionResult> {
-    const sandboxId = randomUUID();
-    const tempDir = path.join(os.tmpdir(), `codesync_run_${sandboxId}`);
-    const timeoutMs = input.timeoutMs || 5000;
-
-    await fs.mkdir(tempDir, { recursive: true });
-
+    const mode = env.EXECUTION_MODE || (env.NODE_ENV === 'production' ? 'docker' : 'local');
+    if (mode === 'disabled' || (mode === 'local' && env.NODE_ENV === 'production')) {
+      throw new AppError('Code execution requires an isolated runner in production.', 503, 'EXECUTION_UNAVAILABLE');
+    }
+    if (this.running >= 2) throw new AppError('Both execution slots are busy. Please try again shortly.', 429, 'EXECUTION_BUSY');
+    this.running++;
+    const started = performance.now();
+    const timeout = Math.min(input.timeoutMs || 5000, env.SANDBOX_TIMEOUT_MS);
+    let tempDir: string | undefined;
     try {
-      const { command, args } = await this.prepareSandboxFiles(
-        input.language,
-        tempDir,
-        input.code,
-        input.stdin || ''
-      );
-
-      const startTime = performance.now();
-
-      const runResult = await this.spawnRunnerProcess(
-        command,
-        args,
-        tempDir,
-        input.stdin || '',
-        timeoutMs
-      );
-      const executionTimeMs = Math.round(performance.now() - startTime);
-
-      const status = runResult.isTimeout
-        ? 'timeout'
-        : runResult.exitCode === 0
-        ? 'success'
-        : 'error';
-
-      return {
-        status,
-        stdout: runResult.stdout.trim(),
-        stderr: runResult.stderr.trim(),
-        executionTimeMs,
-        exitCode: runResult.exitCode,
-        language: input.language,
-      };
+      let code = input.code;
+      if (input.language === 'typescript') {
+        const compiled = ts.transpileModule(code, {
+          compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS }, reportDiagnostics: true,
+        });
+        const errors = compiled.diagnostics?.filter(d => d.category === ts.DiagnosticCategory.Error) || [];
+        if (errors.length) return this.result(input.language, started, '', errors.map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n')).join('\n'), 1);
+        code = compiled.outputText;
+      }
+      if (mode === 'docker') {
+        const containerName = `codesync-${randomUUID()}`;
+        try {
+          const run = await this.runProcess('docker', this.dockerArgs(containerName), process.cwd(), JSON.stringify({ language: input.language, code, stdin: input.stdin || '', timeoutMs: timeout }), timeout + 2000, true);
+          if (run.exitCode === 125 || run.launchError) throw new AppError('Isolated runner unavailable. Build the runner image and configure the Docker host.', 503, 'RUNNER_UNAVAILABLE');
+          const { launchError: _, ...result } = run;
+          return { ...result, status: result.exitCode === 124 ? 'timeout' : result.status, language: input.language, executionTimeMs: Math.round(performance.now() - started) };
+        } finally {
+          await new Promise<void>(resolve => execFile('docker', ['rm', '-f', containerName], { timeout: 3000 }, () => resolve()));
+        }
+      }
+      // Local mode is only for trusted development code. It is NOT a security sandbox.
+      tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codesync-run-'));
+      const runtime = runtimes[input.language];
+      await fs.writeFile(path.join(tempDir, runtime.file), code, { mode: 0o600 });
+      const remaining = () => Math.max(1, timeout - (performance.now() - started));
+      if (runtime.compile) {
+        const compile = await this.runProcess(runtime.compile[0], runtime.compile[1], tempDir, '', remaining());
+        if (compile.status !== 'success') return { ...compile, language: input.language, executionTimeMs: Math.round(performance.now() - started) };
+      }
+      const command = runtime.command === './solution' && process.platform === 'win32' ? path.join(tempDir, 'solution.exe') : runtime.command;
+      const run = await this.runProcess(command, runtime.args, tempDir, input.stdin || '', remaining());
+      const { launchError: _, ...result } = run;
+      return { ...result, language: input.language, executionTimeMs: Math.round(performance.now() - started) };
     } finally {
-      // Clean up sandbox directory
-      try {
-        await fs.rm(tempDir, { recursive: true, force: true });
-      } catch (_cleanupErr) {
-        // Ignore temp cleanup errors
-      }
+      this.running--;
+      if (tempDir) await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
   }
 
-  /**
-   * Prepare sandbox source files and runner scripts
-   */
-  private static async prepareSandboxFiles(
-    language: string,
-    tempDir: string,
-    code: string,
-    stdin: string
-  ): Promise<{ fileName: string; command: string; args: string[] }> {
-    if (language === 'c' || language === 'cpp') {
-      const isCpp = language === 'cpp';
-      const sourceFileName = isCpp ? 'solution.cpp' : 'solution.c';
-      const sourceFilePath = path.join(tempDir, sourceFileName);
-      await fs.writeFile(sourceFilePath, code, 'utf8');
-
-      // Generate JS Transpiled Fallback
-      const transpiledJs = this.transpileCtoJS(code, stdin);
-      await fs.writeFile(path.join(tempDir, 'runner.js'), transpiledJs, 'utf8');
-
-      // Generate Hybrid Orchestrator
-      const orchestratorCode = `
-const { spawnSync } = require('child_process');
-const fs = require('fs');
-const isCpp = ${isCpp};
-const compiler = isCpp ? 'g++' : 'gcc';
-const sourceFile = isCpp ? 'solution.cpp' : 'solution.c';
-const binFile = process.platform === 'win32' ? 'solution.exe' : './solution';
-
-const testCmd = process.platform === 'win32' ? 'where' : 'which';
-const testCompiler = spawnSync(testCmd, [compiler], { stdio: 'pipe' });
-
-if (testCompiler.status === 0) {
-  const compileArgs = isCpp ? ['-std=c++20', '-O2', sourceFile, '-o', binFile] : ['-O2', sourceFile, '-o', binFile];
-  const compile = spawnSync(compiler, compileArgs, { stdio: 'pipe', encoding: 'utf8' });
-  if (compile.status !== 0) {
-    process.stderr.write(compile.stderr || '[Compilation Error] Failed to compile C/C++ source code');
-    process.exit(compile.status || 1);
-  }
-  const run = spawnSync(binFile, [], { stdio: ['inherit', 'inherit', 'inherit'] });
-  process.exit(run.status || 0);
-} else {
-  // Execute high-performance sandbox
-  try {
-    require('./runner.js');
-  } catch (err) {
-    process.stderr.write('[Runtime Error] ' + (err.message || err));
-    process.exit(1);
-  }
-}
-`;
-      await fs.writeFile(path.join(tempDir, 'runner_native.js'), orchestratorCode, 'utf8');
-
-      return {
-        fileName: sourceFileName,
-        command: 'node',
-        args: ['runner_native.js'],
-      };
-    }
-
-    if (language === 'python') {
-      const sourceFileName = 'solution.py';
-      await fs.writeFile(path.join(tempDir, sourceFileName), code, 'utf8');
-
-      const pythonRunner = `
-const { spawnSync } = require('child_process');
-const pyCmd = process.platform === 'win32' ? 'python' : 'python3';
-const testPy = spawnSync(process.platform === 'win32' ? 'where' : 'which', [pyCmd], { stdio: 'pipe' });
-
-if (testPy.status === 0) {
-  const run = spawnSync(pyCmd, ['-u', 'solution.py'], { stdio: ['inherit', 'inherit', 'inherit'] });
-  process.exit(run.status || 0);
-} else {
-  // Lightweight python print evaluation simulation
-  const fs = require('fs');
-  const code = fs.readFileSync('solution.py', 'utf8');
-  console.log('Python Sandbox Execution:');
-  const lines = code.split('\\n');
-  for (const line of lines) {
-    const match = line.match(/^\\s*print\\((.*)\\)\\s*$/);
-    if (match) {
-      try {
-        console.log(eval(match[1].replace(/f"(.*?)"/g, '"$1"')));
-      } catch (_e) {
-        console.log(match[1].replace(/^["']|["']$/g, ''));
-      }
-    }
-  }
-}
-`;
-      await fs.writeFile(path.join(tempDir, 'py_runner.js'), pythonRunner, 'utf8');
-
-      return {
-        fileName: sourceFileName,
-        command: 'node',
-        args: ['py_runner.js'],
-      };
-    }
-
-    if (language === 'javascript' || language === 'typescript') {
-      const sourceFileName = 'solution.js';
-      await fs.writeFile(path.join(tempDir, sourceFileName), code, 'utf8');
-      return {
-        fileName: sourceFileName,
-        command: 'node',
-        args: ['solution.js'],
-      };
-    }
-
-    if (language === 'go') {
-      const sourceFileName = 'solution.go';
-      await fs.writeFile(path.join(tempDir, sourceFileName), code, 'utf8');
-      return {
-        fileName: sourceFileName,
-        command: 'go',
-        args: ['run', 'solution.go'],
-      };
-    }
-
-    if (language === 'rust') {
-      const sourceFileName = 'solution.rs';
-      await fs.writeFile(path.join(tempDir, sourceFileName), code, 'utf8');
-      const rustRunner = `
-const { spawnSync } = require('child_process');
-const testRust = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['rustc'], { stdio: 'pipe' });
-if (testRust.status === 0) {
-  const bin = process.platform === 'win32' ? 'solution.exe' : './solution';
-  spawnSync('rustc', ['-O', 'solution.rs', '-o', bin], { stdio: 'inherit' });
-  const run = spawnSync(bin, [], { stdio: ['inherit', 'inherit', 'inherit'] });
-  process.exit(run.status || 0);
-} else {
-  console.log('[Rust Extension Toolchain] Cargo/Rustc execution simulated.');
-}
-`;
-      await fs.writeFile(path.join(tempDir, 'rust_runner.js'), rustRunner, 'utf8');
-      return {
-        fileName: sourceFileName,
-        command: 'node',
-        args: ['rust_runner.js'],
-      };
-    }
-
-    if (language === 'java') {
-      const sourceFileName = 'Main.java';
-      await fs.writeFile(path.join(tempDir, sourceFileName), code, 'utf8');
-      return {
-        fileName: sourceFileName,
-        command: 'java',
-        args: ['Main.java'],
-      };
-    }
-
-    const sourceFileName = 'solution.js';
-    await fs.writeFile(path.join(tempDir, sourceFileName), code, 'utf8');
-    return {
-      fileName: sourceFileName,
-      command: 'node',
-      args: ['solution.js'],
-    };
+  /** No host mounts, host environment, network, root user, or extra capabilities. */
+  static dockerArgs(name: string): string[] {
+    return ['run', '--rm', '--init', '-i', '--name', name, '--pull=never',
+      '--network=none', '--read-only', '--cap-drop=ALL', '--security-opt=no-new-privileges',
+      '--pids-limit=64', `--memory=${env.SANDBOX_MAX_MEMORY_MB}m`, `--memory-swap=${env.SANDBOX_MAX_MEMORY_MB}m`, '--cpus=0.5',
+      '--user=65534:65534', '--tmpfs=/work:rw,exec,nosuid,size=64m,mode=1777',
+      '--tmpfs=/tmp:rw,noexec,nosuid,size=16m,mode=1777', '--workdir=/work', env.SANDBOX_IMAGE];
   }
 
-  /**
-   * Transpile Standard C / C++ AST to sandboxed JavaScript
-   */
-  private static transpileCtoJS(code: string, stdinData: string = ''): string {
-    let js = code;
-
-    // Remove preprocessor directives (#include, #define, etc.)
-    js = js.replace(/#include\s*<[^>]+>/g, '');
-    js = js.replace(/#include\s*"[^"]+"/g, '');
-    js = js.replace(/#define\s+(\w+)\s+(.+)/g, 'const $1 = $2;');
-
-    // std::vector support
-    js = js.replace(/std::vector<[^>]+>\s+(\w+)\s*=\s*\{([^}]+)\};/g, 'let $1 = [$2];');
-    js = js.replace(/std::vector<[^>]+>\s+(\w+);/g, 'let $1 = [];');
-
-    // std::accumulate
-    js = js.replace(/std::accumulate\((\w+)\.begin\(\),\s*\1\.end\(\),\s*(\d+)\)/g, '$1.reduce((a, b) => a + b, $2)');
-
-    // std::cout support with chained <<
-    js = js.replace(/std::cout\s*<<\s*([^;]+);/g, (_match, exprs) => {
-      const parts = exprs.split(/<<\s*/).map((p: string) => p.trim());
-      const transformed = parts.map((p: string) => {
-        if (p === 'std::endl' || p === 'endl') return '"\\n"';
-        return p;
-      });
-      return `process.stdout.write(String(${transformed.join(' + ')}));`;
-    });
-
-    // sizeof array calculation
-    js = js.replace(/sizeof\s*\(\s*(\w+)\s*\)\s*\/\s*sizeof\s*\(\s*\1\[0\]\s*\)/g, '$1.length');
-    js = js.replace(/sizeof\s*\(\s*(\w+)\s*\)/g, '($1.length || 4)');
-
-    // Array initialization: int arr[] = {1, 2, 3}; or int arr[10];
-    js = js.replace(/(?:const\s+)?(?:int|float|double|char|long|short|unsigned|auto|bool|void|size_t)\s+(\w+)\s*\[\s*\d*\s*\]\s*=\s*\{([^}]+)\};/g, 'let $1 = [$2];');
-    js = js.replace(/(?:const\s+)?(?:int|float|double|char|long|short|unsigned|auto|bool|void|size_t)\s+(\w+)\s*\[\s*(\d+)\s*\];/g, 'let $1 = new Array($2).fill(0);');
-
-    // Function definitions: int main(...) -> function main()
-    js = js.replace(/\b(?:int|float|double|char|long|short|unsigned|auto|bool|void|size_t)\s+(\w+)\s*\(([^)]*)\)\s*\{/g, (_match, name, params) => {
-      if (name === 'main') return 'function main() {';
-      const cleanParams = params.replace(/\b(?:int|float|double|char|long|short|unsigned|auto|bool|void|size_t|std::string|string)\s+(\w+)/g, '$1');
-      return `function ${name}(${cleanParams}) {`;
-    });
-
-    // Variable declarations: int a = 5;
-    js = js.replace(/\b(?:int|float|double|char|long|short|unsigned|auto|bool|void|size_t|std::string|string)\s+(\w+)(?=\s*[=,;\)])/g, 'let $1');
-
-    const runtime = `
-const _stdinData = ${JSON.stringify(stdinData)};
-let _stdinIndex = 0;
-const _stdinTokens = _stdinData.trim().split(/\\s+/).filter(Boolean);
-
-function printf(fmt, ...args) {
-  if (typeof fmt !== 'string') return;
-  let i = 0;
-  let out = fmt.replace(/%[0-9]*\\.?[0-9]*[difscuxXpld]/g, (match) => {
-    if (i >= args.length) return match;
-    const val = args[i++];
-    if (match.includes('f')) return Number(val).toFixed(2);
-    return String(val);
-  });
-  process.stdout.write(out);
-}
-
-function puts(s) {
-  console.log(s);
-}
-
-function putchar(c) {
-  if (typeof c === 'number') process.stdout.write(String.fromCharCode(c));
-  else process.stdout.write(String(c));
-}
-
-function scanf(fmt, ...args) {
-  if (_stdinIndex < _stdinTokens.length) {
-    return _stdinTokens[_stdinIndex++];
-  }
-  return null;
-}
-
-const std = {
-  cout: {
-    write: (s) => process.stdout.write(String(s))
-  },
-  endl: "\\n",
-  cin: {
-    read: () => (_stdinIndex < _stdinTokens.length ? _stdinTokens[_stdinIndex++] : null)
-  }
-};
-`;
-
-    return runtime + '\n' + js + '\n\nif (typeof main === "function") { main(); }\n';
+  private static result(language: string, started: number, stdout: string, stderr: string, exitCode: number): ExecutionResult {
+    return { status: exitCode === 0 ? 'success' : 'error', stdout, stderr, exitCode, language, executionTimeMs: Math.round(performance.now() - started) };
   }
 
-  /**
-   * Spawn process with sanitized environment and timeout guards
-   */
-  private static spawnRunnerProcess(
-    command: string,
-    args: string[],
-    cwd: string,
-    stdinPayload: string,
-    timeoutMs: number
-  ): Promise<{ stdout: string; stderr: string; exitCode: number | null; isTimeout: boolean }> {
-    return new Promise((resolve) => {
-      // Sanitized minimal environment (strip all API keys & database secrets)
-      const sanitizedEnv: NodeJS.ProcessEnv = {
-        PATH: process.env.PATH || '',
-        SystemRoot: process.env.SystemRoot || '',
-        TEMP: process.env.TEMP || '',
-        TMP: process.env.TMP || '',
-        HOME: process.env.HOME || process.env.USERPROFILE || '',
-        NODE_ENV: 'sandbox',
-      };
-
-      let stdout = '';
-      let stderr = '';
-      let isTimeout = false;
-      let isSettled = false;
-
+  private static runProcess(command: string, args: string[], cwd: string, input: string, timeoutMs: number, docker = false): Promise<Omit<ExecutionResult, 'language' | 'executionTimeMs'> & { launchError?: boolean }> {
+    return new Promise(resolve => {
       const child = spawn(command, args, {
-        cwd,
-        env: sanitizedEnv,
-        shell: process.platform === 'win32',
+        cwd, shell: false, detached: process.platform !== 'win32',
+        env: docker ? process.env : { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, TMP: cwd, TEMP: cwd, GOCACHE: path.join(cwd, '.go-cache'), GOTOOLCHAIN: 'local' },
       });
-
-      // Timeout watchdog
-      const timer = setTimeout(() => {
-        if (!isSettled) {
-          isTimeout = true;
-          isSettled = true;
-          stderr += `\n[Execution Timeout] Process exceeded maximum time limit of ${timeoutMs}ms and was terminated.`;
-          try {
-            if (process.platform === 'win32') {
-              spawn('taskkill', ['/pid', String(child.pid), '/f', '/t']);
-            } else {
-              child.kill('SIGKILL');
-            }
-          } catch (_killErr) {}
-          resolve({ stdout, stderr, exitCode: 124, isTimeout: true });
-        }
-      }, timeoutMs);
-
-      // Feed Stdin
-      if (stdinPayload && child.stdin) {
-        child.stdin.write(stdinPayload);
-        child.stdin.end();
-      } else if (child.stdin) {
-        child.stdin.end();
-      }
-
-      // Collect Stdout
-      child.stdout?.on('data', (chunk: Buffer) => {
-        if (stdout.length < this.MAX_OUTPUT_BYTES) {
-          stdout += chunk.toString('utf8');
-        }
+      let stdout = '', stderr = '', outputBytes = 0, timedOut = false, outputExceeded = false, settled = false;
+      const stop = () => {
+        if (!child.pid) return;
+        try {
+          if (process.platform === 'win32') execFile('taskkill', ['/pid', String(child.pid), '/f', '/t'], () => {});
+          else process.kill(-child.pid, 'SIGKILL');
+        } catch { child.kill('SIGKILL'); }
+      };
+      const timer = setTimeout(() => { timedOut = true; stop(); }, timeoutMs);
+      const collect = (chunk: Buffer, stream: 'stdout' | 'stderr') => {
+        const kept = chunk.subarray(0, Math.max(0, this.MAX_OUTPUT_BYTES - outputBytes));
+        if (stream === 'stdout') stdout += kept.toString(); else stderr += kept.toString();
+        outputBytes += chunk.length;
+        if (outputBytes > this.MAX_OUTPUT_BYTES && !outputExceeded) { outputExceeded = true; stop(); }
+      };
+      child.stdout.on('data', chunk => collect(chunk, 'stdout'));
+      child.stderr.on('data', chunk => collect(chunk, 'stderr'));
+      child.stdin.on('error', () => {});
+      child.stdin.end(input);
+      child.on('error', () => {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        resolve({ status: 'error', stdout, stderr: `Runtime unavailable: ${path.basename(command)} is not installed on this server.`, exitCode: 127, launchError: true });
       });
-
-      // Collect Stderr
-      child.stderr?.on('data', (chunk: Buffer) => {
-        if (stderr.length < this.MAX_OUTPUT_BYTES) {
-          stderr += chunk.toString('utf8');
-        }
-      });
-
-      child.on('error', (err: Error) => {
-        if (!isSettled) {
-          isSettled = true;
-          clearTimeout(timer);
-          stderr += `\n[Process Error] Failed to launch ${command}: ${err.message}`;
-          resolve({ stdout, stderr, exitCode: 1, isTimeout: false });
-        }
-      });
-
-      child.on('close', (code: number | null) => {
-        if (!isSettled) {
-          isSettled = true;
-          clearTimeout(timer);
-          resolve({ stdout, stderr, exitCode: code, isTimeout });
-        }
+      child.on('close', code => {
+        if (settled) return;
+        settled = true; clearTimeout(timer);
+        if (timedOut) stderr += `\n[Execution Timeout] Process exceeded maximum time limit of ${Math.round(timeoutMs)}ms and was terminated.`;
+        if (outputExceeded) stderr += '\n[Output Limit] Execution stopped after 64 KB of output.';
+        resolve({ status: timedOut ? 'timeout' : code === 0 && !outputExceeded ? 'success' : 'error', stdout, stderr, exitCode: timedOut ? 124 : outputExceeded ? 1 : code });
       });
     });
   }

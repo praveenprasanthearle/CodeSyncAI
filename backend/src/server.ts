@@ -3,6 +3,7 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { connectDatabase, disconnectDatabase } from './config/db';
 import { SocketManager } from './sockets';
+import { YjsDocManager } from './sockets/yjsManager';
 
 const startServer = async (): Promise<void> => {
   // Connect to Database
@@ -24,6 +25,8 @@ const startServer = async (): Promise<void> => {
   // Graceful Shutdown Handling
   const shutdown = async (signal: string) => {
     console.log(`\n🛑 Received ${signal}. Shutting down gracefully...`);
+    await YjsDocManager.getInstance().flushAll();
+    SocketManager.getInstance().io.disconnectSockets(true);
     httpServer.close(async () => {
       console.log('HTTP and Socket server closed.');
       await disconnectDatabase();

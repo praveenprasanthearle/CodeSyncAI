@@ -4,6 +4,9 @@ import { AppError } from '../middleware/errorHandler';
 import { CreateProjectInput, UpdateProjectInput } from '../validations/project.validation';
 import { TemplateSeeder } from './templateSeeder';
 import mongoose from 'mongoose';
+import { SocketManager } from '../sockets';
+import { FileNode } from '../models/FileNode';
+import { YjsDocManager } from '../sockets/yjsManager';
 
 export interface ProjectListQuery {
   search?: string;
@@ -159,6 +162,7 @@ export class ProjectService {
 
     project.lastActivityAt = new Date();
     await project.save();
+    await SocketManager.refreshProjectAccess(project.id);
 
     const populated = await Project.findById(project._id)
       .populate('owner', 'name username email avatarUrl')
@@ -172,6 +176,7 @@ export class ProjectService {
    */
   static async deleteProject(project: IProjectDocument): Promise<void> {
     await Project.findByIdAndDelete(project._id);
+    await SocketManager.refreshProjectAccess(project.id);
   }
 
   /**
@@ -252,6 +257,7 @@ export class ProjectService {
 
     project.lastActivityAt = new Date();
     await project.save();
+    await SocketManager.refreshProjectAccess(project.id);
 
     const populated = await Project.findById(project._id)
       .populate('owner', 'name username email avatarUrl')
@@ -283,6 +289,7 @@ export class ProjectService {
     member.role = newRole;
     project.lastActivityAt = new Date();
     await project.save();
+    await SocketManager.refreshProjectAccess(project.id);
 
     const populated = await Project.findById(project._id)
       .populate('owner', 'name username email avatarUrl')
@@ -313,6 +320,17 @@ export class ProjectService {
       ],
       lastActivityAt: new Date(),
     });
+
+    await YjsDocManager.getInstance().flushAll();
+    const sourceFiles = await FileNode.find({ projectId: originalProject._id });
+    const ids = new Map(sourceFiles.map(file => [file.id, new mongoose.Types.ObjectId()]));
+    if (sourceFiles.length) await FileNode.insertMany(sourceFiles.map(file => ({
+      _id: ids.get(file.id), projectId: cloned._id, name: file.name, path: file.path,
+      type: file.type, parentId: file.parentId ? ids.get(file.parentId.toString()) || null : null,
+      content: file.content, language: file.language, size: file.size, lastModifiedBy: ownerObjectId,
+    })));
+    cloned.fileCount = sourceFiles.filter(file => file.type === 'file').length;
+    await cloned.save();
 
     const populated = await Project.findById(cloned._id)
       .populate('owner', 'name username email avatarUrl')

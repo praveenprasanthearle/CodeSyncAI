@@ -34,3 +34,23 @@ export const generalRateLimiter = rateLimit({
   },
   skip: () => env.NODE_ENV === 'test',
 });
+
+export const executionRateLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 15,
+  keyGenerator: req => req.user!.userId,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'Too many runs. Please wait a minute before trying again.', error: { code: 'RATE_LIMIT_EXCEEDED' } },
+  skip: () => env.NODE_ENV === 'test',
+});
+
+export const aiRateLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 20,
+  keyGenerator: req => req.user!.userId,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'AI request limit reached. Please wait a minute.', error: { code: 'AI_RATE_LIMITED' } },
+  skip: () => env.NODE_ENV === 'test',
+});

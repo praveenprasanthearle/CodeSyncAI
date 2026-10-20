@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { createTestDatabase } from './database';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -19,9 +20,11 @@ describe('In-Project Communication & WebRTC Voice Integration Tests', () => {
   let tokenBob: string;
   let tokenCharlie: string;
   let projectId: string;
+  const clients: ClientSocket[] = [];
+  afterEach(() => { clients.splice(0).forEach(client => client.disconnect()); });
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
+    mongoServer = await createTestDatabase();
     const uri = mongoServer.getUri();
     await mongoose.connect(uri);
 
@@ -99,12 +102,15 @@ describe('In-Project Communication & WebRTC Voice Integration Tests', () => {
       .send({ emailOrUsername: 'bob_marley', role: 'editor' });
   });
 
-  const createTestClient = (token?: string): ClientSocket => {
-    return Client(`http://localhost:${serverPort}`, {
+  const createTestClient = (token?: string, autoConnect = true): ClientSocket => {
+    const client = Client(`http://localhost:${serverPort}`, {
       auth: { token },
       transports: ['websocket'],
       forceNew: true,
+      autoConnect,
     });
+    clients.push(client);
+    return client;
   };
 
   describe('REST Message History Endpoints', () => {
@@ -211,7 +217,7 @@ describe('In-Project Communication & WebRTC Voice Integration Tests', () => {
   describe('WebRTC Voice Signaling Protocol', () => {
     it('should coordinate WebRTC voice room join and relay SDP offer/answer', async () => {
       const socketAlice = createTestClient(tokenAlice);
-      const socketBob = createTestClient(tokenBob);
+      const socketBob = createTestClient(tokenBob, false);
 
       await new Promise<void>((resolve) => {
         let bobSocketId: string;
@@ -219,6 +225,7 @@ describe('In-Project Communication & WebRTC Voice Integration Tests', () => {
         socketAlice.on('connect', () => {
           socketAlice.emit('webrtc:join_voice', { projectId, isMuted: false });
         });
+        socketAlice.once('webrtc:voice_peers', () => socketBob.connect());
 
         socketAlice.on('webrtc:peer_joined', (data: any) => {
           expect(data.peer.user.username).toBe('bob_marley');

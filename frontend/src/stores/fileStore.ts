@@ -1,8 +1,10 @@
 import { create } from 'zustand';
 import { IFileNode } from '../types';
 import { apiClient } from '../api/client';
+import { useCollaborationStore } from './collaborationStore';
 
 interface FileState {
+  currentProjectId: string | null;
   fileTree: IFileNode[];
   activeFileId: string | null;
   openTabIds: string[];
@@ -38,7 +40,10 @@ interface FileState {
   clearState: () => void;
 }
 
+let openRequest = 0;
+
 export const useFileStore = create<FileState>((set, get) => ({
+  currentProjectId: null,
   fileTree: [],
   activeFileId: null,
   openTabIds: [],
@@ -50,10 +55,18 @@ export const useFileStore = create<FileState>((set, get) => ({
   error: null,
 
   fetchProjectFiles: async (projectId: string) => {
+    if (get().currentProjectId !== projectId) {
+      openRequest++;
+      set({ currentProjectId: projectId, fileTree: [], activeFileId: null, openTabIds: [], fileContents: {}, dirtyFileIds: [] });
+    }
     set({ isLoading: true, error: null });
     try {
       const response: any = await apiClient.get(`/projects/${projectId}/files`);
       const tree: IFileNode[] = response?.data?.files || [];
+      if (get().currentProjectId !== projectId) return;
+      const validFiles = new Set<string>();
+      const collectFiles = (nodes: IFileNode[]) => nodes.forEach(node => { if (node.type === 'file') validFiles.add(node.id); if (node.children) collectFiles(node.children); });
+      collectFiles(tree);
 
       // Auto-expand all top-level folders
       const initialExpanded: string[] = [];
@@ -70,6 +83,10 @@ export const useFileStore = create<FileState>((set, get) => ({
       set({
         fileTree: tree,
         expandedFolderIds: initialExpanded,
+        activeFileId: get().activeFileId && validFiles.has(get().activeFileId!) ? get().activeFileId : null,
+        openTabIds: get().openTabIds.filter(id => validFiles.has(id)),
+        fileContents: Object.fromEntries(Object.entries(get().fileContents).filter(([id]) => validFiles.has(id))),
+        dirtyFileIds: get().dirtyFileIds.filter(id => validFiles.has(id)),
       });
 
       // Auto-open first file (e.g. App.jsx, main.py, README.md) if no tab is open
@@ -91,14 +108,15 @@ export const useFileStore = create<FileState>((set, get) => ({
         }
       }
     } catch (err: any) {
-      set({ error: err.message || 'Failed to load project files' });
+      if (get().currentProjectId === projectId) set({ error: err.message || 'Failed to load project files' });
     } finally {
-      set({ isLoading: false });
+      if (get().currentProjectId === projectId) set({ isLoading: false });
     }
   },
 
   openFile: async (file: IFileNode) => {
     if (file.type === 'folder') return;
+    const requestId = ++openRequest;
 
     const { openTabIds, fileContents } = get();
     const updatedTabs = openTabIds.includes(file.id) ? openTabIds : [...openTabIds, file.id];
@@ -107,6 +125,7 @@ export const useFileStore = create<FileState>((set, get) => ({
     if (fileContents[file.id] === undefined) {
       try {
         const response: any = await apiClient.get(`/files/${file.id}`);
+        if (requestId !== openRequest) return;
         const content = response?.data?.file?.content ?? file.content ?? '';
         set((state) => ({
           activeFileId: file.id,
@@ -115,6 +134,7 @@ export const useFileStore = create<FileState>((set, get) => ({
         }));
         return;
       } catch (_err) {
+        if (requestId !== openRequest) return;
         // Use file.content if fetch fails (e.g. offline or unit tests)
         set((state) => ({
           activeFileId: file.id,
@@ -189,16 +209,16 @@ export const useFileStore = create<FileState>((set, get) => ({
   },
 
   saveFile: async (fileId: string) => {
-    const { fileContents, dirtyFileIds } = get();
+    const { fileContents } = get();
     const content = fileContents[fileId];
     if (content === undefined) return;
 
     set({ isSaving: true });
     try {
-      await apiClient.put(`/files/${fileId}`, { content });
-      set({
-        dirtyFileIds: dirtyFileIds.filter((id) => id !== fileId),
-      });
+      const persisted = await useCollaborationStore.getState().flushFile(fileId);
+      if (persisted === null) await apiClient.put(`/files/${fileId}`, { content });
+      const savedContent = persisted ?? content;
+      set(state => ({ error: null, dirtyFileIds: state.fileContents[fileId] === savedContent ? state.dirtyFileIds.filter(id => id !== fileId) : state.dirtyFileIds }));
     } catch (err: any) {
       set({ error: err.message || 'Failed to save file' });
     } finally {
@@ -209,6 +229,7 @@ export const useFileStore = create<FileState>((set, get) => ({
   saveAllDirtyFiles: async () => {
     const { dirtyFileIds, saveFile } = get();
     await Promise.all(dirtyFileIds.map((id) => saveFile(id)));
+    if (get().error) throw new Error(get().error!);
   },
 
   createNode: async (projectId, name, type, parentId = null, content = '') => {
@@ -305,7 +326,9 @@ export const useFileStore = create<FileState>((set, get) => ({
   },
 
   clearState: () => {
+    openRequest++;
     set({
+      currentProjectId: null,
       fileTree: [],
       activeFileId: null,
       openTabIds: [],

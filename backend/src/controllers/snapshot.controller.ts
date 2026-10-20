@@ -28,7 +28,7 @@ export class SnapshotController {
 
   static async getById(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const snapshot = await SnapshotService.getSnapshotById(req.params.id);
+      const snapshot = await SnapshotService.getSnapshotById(req.params.id, req.user!.userId);
       sendSuccess(res, { snapshot }, 'Snapshot retrieved successfully');
     } catch (error) {
       next(error);

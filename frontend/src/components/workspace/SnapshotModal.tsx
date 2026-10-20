@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Camera, X, Loader2, GitCommit, Check } from 'lucide-react';
 import { useSnapshotStore } from '../../stores/snapshotStore';
+import { useFileStore } from '../../stores/fileStore';
 
 interface SnapshotModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export const SnapshotModal: React.FC<SnapshotModalProps> = ({
 
     setError(null);
     try {
+      await useFileStore.getState().saveAllDirtyFiles();
       await createSnapshot(projectId, name.trim(), description.trim());
       setIsSuccess(true);
       setTimeout(() => {
